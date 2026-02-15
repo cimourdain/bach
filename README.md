@@ -7,6 +7,7 @@
 - https://bertvv.github.io/cheat-sheets/Bash.html
 - https://kalilinuxtutorials.com/bash-functions-explained-syntax-examples-and-best-practices/
 - https://thelinuxcode.com/bash-subshells/
+- https://github.com/juan131/bash-libraries?tab=readme-ov-file#bash-best-practices
 
 
 # Files
