@@ -1,55 +1,114 @@
 #!/bin/bash
 
+################################################################################
+# BAR - Bar Command
+################################################################################
+# Description:
+#   Execute bar operations with configurable options. Supports quiet mode,
+#   dry-run simulation, and custom configuration files.
+#
+# Usage:
+#   bar [options] [arguments...]
+#
+# Examples:
+#   # Execute with default configuration
+#   bar
+#
+#   # Quiet mode with dry-run
+#   bar -qd
+#
+#   # Use custom configuration file
+#   bar --config=custom.conf
+#
+# Dependencies:
+#   - bash 4.0+
+#   - bachcli::import (../../lib/import.sh)
+#   - bach::parse_args_from_docstring (../../lib/parse_args.sh)
+#   - bachcli::doc_helper (../../lib/doc_helper.sh)
+#
+# Author: BACHCLI Project
+# Version: 1.5.0
+################################################################################
+
+################################################################################
+# Main function
+# Executes bar operations with parsed command-line options.
+# Arguments:
+#   $@ - Command-line arguments
+# Globals:
+#   __ARGS_VAR_NAME - Name of the associative array containing parsed arguments
+#   __PATH_ARGS - Array of positional arguments
+# Returns:
+#   0 on success, 1 on parse error
+################################################################################
 main() {
     # Get the directory where this script is located
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local lib_dir="$(cd "${script_dir}/../.." && pwd)/lib"
 
-    # Source required libraries
-    source "${lib_dir}/parse_args.sh"
-    source "${lib_dir}/doc_helper.sh"
+    # Calculate relative path for logging (from workspace root)
+    local log_path="${script_dir##*/tools/cli/}"
+
+    # Source import library and load dependencies
+    source "${lib_dir}/import.sh"
+    bachcli::import "parse_args,doc_helper,router,executor"
+
+    # Subcommands directory - where the command scripts are located
+    local subcommand_dir="${script_dir}"
+
+    # Configurable exclusions - add files/patterns to exclude from execution
+    local exclude_list="const.sh,statics.sh"
 
     local doc_string="
-BAR - Bar Command
+Command ${log_path}
 
-Execute bar operations.
-
-Usage:
-    bar [options]
+Description of commands defined in ${script_dir}
 
 Options:
-    -q|--quiet||Suppress output
-    -d|--dry-run||Show what would be done without executing
-    --config=|default=\"default.conf\"|Configuration file to use
+    -q,--quiet,Suppress output
+    -d,--dry-run,Show what would be done without executing
+    --config=,default="default.conf",Configuration file to use
 
 ----
 1.5.0
 "
+    printf '[%s]%s\n' "${log_path}" "Enter command execution" >&2
+    # Build documentation
+    printf '[%s]%s\n' "${log_path}" "Build documentation" >&2
+    local available_subcommands
+    available_subcommands=$(bachcli::get_subcommands "" "${exclude_list}")
 
-    # Parse arguments (parse_args handles --help and --version internally)
-    parse_args "$doc_string" "" "" "$@"
-    
+    printf '[%s]%s\n' "${log_path}" "Resolve docstring" >&2
+    local resolved_docstring
+    resolved_docstring=$(bach::resolve_docstring "${doc_string}" "${script_dir}" "${available_subcommands}")
+
+    printf '[%s]%s\n' "${log_path}" "Parse arguments from docstring" >&2
+    # Parse arguments (bach::parse_args_from_docstring handles --help and --version internally)
+    bach::parse_args_from_docstring "${resolved_docstring}" "$@"
+
     case $? in
         0) ;;  # Continue execution
         2|3) return 0 ;;  # Help or version was handled
         *) return 1 ;;  # Parse error
     esac
-    
+
     # Access parsed options
     declare -n args="${__ARGS_VAR_NAME}"
-    
-    if [[ "${args[quiet]}" != "true" ]]; then
-        printf '%s\n' "=== BAR Command Executed ===" >&2
-        printf '%s\n' "Config file: ${args[config]}" >&2
-        
-        if [[ "${args[dry-run]}" == "true" ]]; then
-            printf '%s\n' "[DRY RUN] Would execute bar operations" >&2
-        else
-            printf '%s\n' "Executing bar operations..." >&2
-        fi
-    fi
+
+    printf '[%s]%s\n' "${log_path}" "Parsed options:" >&2
+    printf -v fmtStr '[%s]=%%q\\n' "${!args[@]}";printf "$fmtStr" "${args[@]}"
+
+    printf '[%s]%s\n' "${log_path}" "Actions BEFORE executing subcommands" >&2
+
+    printf '[%s]%s\n' "${log_path}" "Executing subcommands:" >&2
+    bachcli::execute_subcommand "${subcommand_dir}" "$exclude_list" "${__PATH_ARGS[@]}"
+
+    printf '[%s]%s\n' "${log_path}" "Actions AFTER executing subcommands" >&2
+
+    printf '[%s]%s\n' "${log_path}" "Finished executing command" >&2
 }
 
+# Direct execution guard clause
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi

@@ -1,59 +1,113 @@
 #!/bin/bash
 
+################################################################################
+# YAYA - Yaya Command
+################################################################################
+# Description:
+#   Execute yaya operations in the deeply nested context (cp -> stwo -> ssx -> yaya).
+#   Supports recursive processing and parallel execution with configurable threads.
+#
+# Usage:
+#   yaya [options] [action] [arguments...]
+#
+# Examples:
+#   # Execute recursively
+#   yaya --recursive myaction
+#
+#   # Run in parallel with 16 threads
+#   yaya -rp --threads=16 myaction
+#
+#   # Standard execution
+#   yaya process target1 target2
+#
+# Dependencies:
+#   - bash 4.0+
+#   - bachcli::import (../../../lib/import.sh)
+#   - bach::parse_args_from_docstring (../../../lib/parse_args.sh)
+#   - bachcli::router (../../../lib/router.sh)
+#
+# Author: BACHCLI Project
+# Version: 3.0.0
+################################################################################
+
+################################################################################
+# Main function
+# Executes yaya operations with support for recursive and parallel processing.
+# Arguments:
+#   $@ - Command-line arguments
+# Globals:
+#   __ARGS_VAR_NAME - Name of the associative array containing parsed arguments
+#   __PATH_ARGS - Array of positional arguments
+# Returns:
+#   0 on success, 1 on parse error
+################################################################################
 main() {
     # Get the directory where this script is located
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local lib_dir="$(cd "${script_dir}/../../.." && pwd)/lib"
 
-    # Source required libraries
-    source "${lib_dir}/parse_args.sh"
-    source "${lib_dir}/doc_helper.sh"
+    # Calculate relative path for logging (from workspace root)
+    local log_path="${script_dir##*/tools/cli/}"
+
+    # Source import library and load dependencies
+    source "${lib_dir}/import.sh"
+    bachcli::import "parse_args,doc_helper,router,executor"
+
+    # Subcommands directory - where the command scripts are located
+    local subcommand_dir="${script_dir}"
+
+    # Configurable exclusions - add files/patterns to exclude from execution
+    local exclude_list="const.sh,statics.sh"
 
     local doc_string="
-YAYA - Yaya Command
+Command ${log_path}
 
-Execute yaya operations in the deeply nested context.
-
-Usage:
-    yaya [options] <action>
+Description of commands defined in ${script_dir}
 
 Options:
-    -r|--recursive||Process recursively
-    -p|--parallel|default=false|Run in parallel mode
-    --threads=|default=\"4\"|Number of threads to use
+    -r,--recursive,Process recursively
+    -p,--parallel,default="false",Run in parallel mode
+    --threads=,default="4",Number of threads to use
 
 ----
 3.0.0
 "
+    printf '[%s]%s\n' "${log_path}" "Enter command execution" >&2
+    # Build documentation
+    printf '[%s]%s\n' "${log_path}" "Build documentation" >&2
+    local available_subcommands
+    available_subcommands=$(bachcli::get_subcommands "" "${exclude_list}")
 
-    # Parse arguments (parse_args handles --help and --version internally)
-    parse_args "$doc_string" "" "" "$@"
-    
+    printf '[%s]%s\n' "${log_path}" "Resolve docstring" >&2
+    local resolved_docstring
+    resolved_docstring=$(bach::resolve_docstring "${doc_string}" "${script_dir}" "${available_subcommands}")
+
+    printf '[%s]%s\n' "${log_path}" "Parse arguments from docstring" >&2
+    bach::parse_args_from_docstring "${resolved_docstring}" "$@"
+
     case $? in
         0) ;;  # Continue execution
         2|3) return 0 ;;  # Help or version was handled
         *) return 1 ;;  # Parse error
     esac
-    
+
     # Access parsed options
     declare -n args="${__ARGS_VAR_NAME}"
-    
-    printf '%s\n' "=== YAYA Command Executed ===" >&2
-    printf '%s\n' "Path: cp -> cmd -> stwo -> ssx -> yaya" >&2
-    printf '%s\n' "Options:" >&2
-    printf '%s\n' "  --recursive: ${args[recursive]}" >&2
-    printf '%s\n' "  --parallel: ${args[parallel]}" >&2
-    printf '%s\n' "  --threads: ${args[threads]}" >&2
-    
-    if [[ ${#__PATH_ARGS[@]} -gt 0 ]]; then
-        printf '%s\n' "Action: ${__PATH_ARGS[*]}" >&2
-    fi
-    
-    if [[ "${args[parallel]}" == "true" ]]; then
-        printf '%s\n' "Running in parallel mode with ${args[threads]} threads" >&2
-    fi
+
+    printf '[%s]%s\n' "${log_path}" "Parsed options:" >&2
+    printf -v fmtStr '[%s]=%%q\\n' "${!args[@]}";printf "$fmtStr" "${args[@]}"
+
+    printf '[%s]%s\n' "${log_path}" "Actions BEFORE executing subcommands" >&2
+
+    printf '[%s]%s\n' "${log_path}" "Executing subcommands:" >&2
+    bachcli::execute_subcommand "${subcommand_dir}" "$exclude_list" "${__PATH_ARGS[@]}"
+
+    printf '[%s]%s\n' "${log_path}" "Actions AFTER executing subcommands" >&2
+
+    printf '[%s]%s\n' "${log_path}" "Finished executing command" >&2
 }
 
+# Direct execution guard clause
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi
