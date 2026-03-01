@@ -10,9 +10,9 @@ if ! declare -p "${__ARGS_VAR_NAME}" &>/dev/null; then
 fi
 
 # Prevent re-sourcing if functions already declared
-if declare -F bach::parse_args_from_docstring &>/dev/null && \
-   declare -F bach::is_help_requested &>/dev/null && \
-   declare -F bach::is_version_requested &>/dev/null; then
+if declare -F bach::parse_args::from_docstring &>/dev/null && \
+   declare -F bach::parse_args::is_help_requested &>/dev/null && \
+   declare -F bach::parse_args::is_version_requested &>/dev/null; then
     return 0
 fi
 
@@ -21,7 +21,7 @@ fi
 #   $1: Documentation string
 # Returns:
 #   Version string (e.g., "1.2.3")
-bach::get_version_from_doc() {
+bach::parse_args::get_version_from_doc() {
     local doc_string="$1"
     local version=""
 
@@ -52,7 +52,7 @@ bach::get_version_from_doc() {
 #   $3: Name reference to valid_options associative array
 #   $4: Name reference to flag_defaults associative array
 #   $5: Name reference to option_defaults associative array
-bach::__private::extract_valid_options() {
+bach::parse_args::__private::extract_valid_options() {
     local doc_string="$1"
     local -n vf="$2"
     local -n vo="$3"
@@ -149,7 +149,7 @@ bach::__private::extract_valid_options() {
 #   $@: Arguments to parse
 # Returns:
 #   0 if parsed successfully, sets seen_path_arg_ref to true/false
-bach::__private::parse_command_line() {
+bach::parse_args::__private::parse_command_line() {
     local -n aa="$1"
     local -n vf="$2"
     local -n vo="$3"
@@ -215,7 +215,7 @@ bach::__private::parse_command_line() {
 #   $1: Name reference to args_array
 #   $2: Name reference to flag_defaults
 #   $3: Name reference to option_defaults
-bach::__private::set_default_values() {
+bach::parse_args::__private::set_default_values() {
     local -n aa="$1"
     local -n fd="$2"
     local -n od="$3"
@@ -235,7 +235,7 @@ bach::__private::set_default_values() {
 #   $3: Documentation string (already built with subcommands)
 # Returns:
 #   0 if no help/version, 2 for help, 3 for version
-bach::__private::handle_help_version() {
+bach::parse_args::__private::handle_help_version() {
     local -n aa="$1"
     local -n pa="$2"
     local doc_string="$3"
@@ -243,10 +243,12 @@ bach::__private::handle_help_version() {
     [[ ${#pa[@]} -gt 0 ]] && return 0
 
     if [[ "${aa[help]}" == "true" ]]; then
+        bach log --debug "Help requested, printing documentation string"
         echo "$doc_string"
         return 2
     elif [[ "${aa[version]}" == "true" ]]; then
-        local version=$(bach::get_version_from_doc "$doc_string")
+        bach log --debug "Version requested, printing version"
+        local version=$(bach::parse_args::get_version_from_doc "$doc_string")
         echo "${version}"
         return 3
     fi
@@ -266,9 +268,12 @@ bach::__private::handle_help_version() {
 # Side Effects:
 #   Sets global associative array with parsed options
 #   Stores path arguments in global __PATH_ARGS array
-bach::parse_args_from_docstring() {
+bach::parse_args::from_docstring() {
     local doc_string="$1"
+    bach log --verbose "Parse arguments using docstring: $doc_string"
     shift 1
+
+    bach log --verbose "Arguments to match against docstring: $@"
 
     local -n args_array="${__ARGS_VAR_NAME}"
     local -a path_args=()
@@ -278,7 +283,7 @@ bach::parse_args_from_docstring() {
     local -A option_defaults=()
 
     # Extract valid flags and options from documentation
-    bach::__private::extract_valid_options "$doc_string" \
+    bach::parse_args::__private::extract_valid_options "$doc_string" \
         valid_flags valid_options flag_defaults option_defaults
 
     # Auto-inject help and version flags
@@ -290,27 +295,28 @@ bach::parse_args_from_docstring() {
     flag_defaults["version"]="false"
 
     # Set default values
-    bach::__private::set_default_values args_array flag_defaults option_defaults
+    bach::parse_args::__private::set_default_values args_array flag_defaults option_defaults
 
     # Parse command line arguments
-    bach::__private::parse_command_line args_array valid_flags valid_options path_args "$@"
+    bach::parse_args::__private::parse_command_line args_array valid_flags valid_options path_args "$@"
 
     # Store path arguments in global array
+    bach log --verbose "Store path arguments to global variable __PATH_ARGS"
     declare -ga __PATH_ARGS=("${path_args[@]}")
 
     # Handle help/version if no path args
-    bach::__private::handle_help_version args_array path_args "$doc_string"
+    bach::parse_args::__private::handle_help_version args_array path_args "$doc_string"
     return $?
 }
 
 # Check if help flag is set
-bach::is_help_requested() {
+bach::parse_args::is_help_requested() {
     local -n args_array="${__ARGS_VAR_NAME}"
     [[ "${args_array[help]}" == "true" ]]
 }
 
 # Check if version flag is set
-bach::is_version_requested() {
+bach::parse_args::is_version_requested() {
     local -n args_array="${__ARGS_VAR_NAME}"
     [[ "${args_array[version]}" == "true" ]]
 }
@@ -340,29 +346,29 @@ bach::parse_args() {
     local -n args_array="${__ARGS_VAR_NAME}"
     local -a path_args=()
     local in_path_args=false
-    
+
     # Clear previous values
     for key in "${!args_array[@]}"; do
         unset args_array["$key"]
     done
-    
+
     while [[ $# -gt 0 ]]; do
         local arg="$1"
-        
+
         # Check if we've hit the path arguments section
         if [[ "$in_path_args" == true ]]; then
             path_args+=("$1")
             shift
             continue
         fi
-        
+
         # Double dash means rest are path args
         if [[ "$arg" == "--" ]]; then
             in_path_args=true
             shift
             continue
         fi
-        
+
         # Long option with equals: --key=value
         if [[ "$arg" =~ ^--([^=]+)=(.*)$ ]]; then
             local key="${BASH_REMATCH[1]}"
@@ -371,7 +377,7 @@ bach::parse_args() {
             shift
             continue
         fi
-        
+
         # Long flag or option: --key
         if [[ "$arg" =~ ^--(.+)$ ]]; then
             local key="${BASH_REMATCH[1]}"
@@ -385,7 +391,7 @@ bach::parse_args() {
             fi
             continue
         fi
-        
+
         # Short option(s): -f or -abc
         if [[ "$arg" =~ ^-(.+)$ ]]; then
             local flags="${BASH_REMATCH[1]}"
@@ -403,26 +409,22 @@ bach::parse_args() {
             fi
             continue
         fi
-        
+
         # If we get here, it's a path argument
         path_args+=("$arg")
         in_path_args=true
         shift
     done
-    
+
     # Store path arguments in global array
     declare -ga __PATH_ARGS=("${path_args[@]}")
-    
+
     return 0
 }
 
 # Export functions
-export -f bach::get_version_from_doc
-export -f bach::__private::extract_valid_options
-export -f bach::__private::parse_command_line
-export -f bach::__private::set_default_values
-export -f bach::__private::handle_help_version
-export -f bach::parse_args_from_docstring
+export -f bach::parse_args::get_version_from_doc
+export -f bach::parse_args::from_docstring
 export -f bach::parse_args
-export -f bach::is_help_requested
-export -f bach::is_version_requested
+export -f bach::parse_args::is_help_requested
+export -f bach::parse_args::is_version_requested

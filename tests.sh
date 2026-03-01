@@ -9,21 +9,21 @@
 #   comprehensive test reporting with color-coded output.
 #
 # Usage:
-#   ./tests/main.sh [pattern]
+#   ./tests.sh [pattern]
 #
 # Examples:
 #   # Run all tests
-#   ./tests/main.sh
+#   ./tests.sh
 #
 #   # Run specific test file
-#   ./tests/main.sh tests/lib/log.test.sh
+#   ./tests.sh tests/lib/log.test.sh
 #
 #   # Run tests matching pattern
-#   ./tests/main.sh tests/lib/**/*.test.sh
+#   ./tests.sh libs/**/*.test.sh
 #
 # Dependencies:
 #   - bash 4.0+
-#   - assert.sh (tests/assert.sh)
+#   - assert.sh (libs/assert.sh)
 #   - find, sed commands
 #
 # Author: BACH Project
@@ -175,7 +175,7 @@ bach::test_runner::main() {
     export RESET="\033[0m"
 
     # Source assertion helpers
-    source "$script_dir/assert.sh"
+    source "$script_dir/libs/assert.sh"
 
     # Get test pattern from argument or use default
     local pattern="${1:-tests/**/*.test.sh}"

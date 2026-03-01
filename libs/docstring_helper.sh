@@ -4,16 +4,16 @@
 __DOC_HELPER_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Prevent re-sourcing if functions already declared
-if declare -F bach::get_version_from_doc &>/dev/null && \
-   declare -F bach::build_documentation &>/dev/null && \
-   declare -F bach::__private::inject_subcommands &>/dev/null && \
-   declare -F bach::print_doc &>/dev/null && \
-   declare -F bach::print_version &>/dev/null; then
+if declare -F bach::docstring_helper::get_version_from_doc &>/dev/null && \
+   declare -F bach::docstring_helper::build_documentation &>/dev/null && \
+   declare -F bach::docstring_helper::__private::inject_subcommands &>/dev/null && \
+   declare -F bach::docstring_helper::print_doc &>/dev/null && \
+   declare -F bach::docstring_helper::print_version &>/dev/null; then
     return 0
 fi
 
 # Helper function to check if item is excluded (private)
-bach::__private::is_excluded() {
+bach::docstring_helper::__private::is_excluded() {
     local item="$1"
     local item_name=$(basename "$item")
     shift
@@ -28,7 +28,7 @@ bach::__private::is_excluded() {
 }
 
 # Check if directory has an executable main script (private)
-bach::__private::has_executable_main() {
+bach::docstring_helper::__private::has_executable_main() {
     local dir="$1"
 
     if [[ -f "$dir/main.sh" && -x "$dir/main.sh" ]]; then
@@ -40,8 +40,8 @@ bach::__private::has_executable_main() {
 }
 
 # Get list of available subcommands in a directory (private)
-# Used internally by bach::build_documentation for tests
-bach::__private::get_available_subcommands() {
+# Used internally by bach::docstring_helper::build_documentation for tests
+bach::docstring_helper::__private::get_available_subcommands() {
     local base_dir="$1"
     local exclude_list="$2"
 
@@ -58,14 +58,14 @@ bach::__private::get_available_subcommands() {
 
     for item in "$base_dir"/*; do
         [[ ! -e "$item" ]] && continue
-        bach::__private::is_excluded "$item" "${exclude_array[@]}" && continue
+        bach::docstring_helper::__private::is_excluded "$item" "${exclude_array[@]}" && continue
 
         local item_name=$(basename "$item")
 
         # Check if it's a directory
         if [[ -d "$item" ]]; then
             # Include directory if it has main.sh or if it contains any subcommands
-            if bach::__private::has_executable_main "$item"; then
+            if bach::docstring_helper::__private::has_executable_main "$item"; then
                 subcommands+=("${item_name}")
             else
                 # Check if directory contains any executable files or subdirectories
@@ -101,7 +101,7 @@ bach::__private::get_available_subcommands() {
 #   $1: Script directory
 #   $2: Exclude list
 #   $3: Name reference to subcommands array
-bach::__private::process_and_filter_subcommands() {
+bach::docstring_helper::__private::process_and_filter_subcommands() {
     local script_dir="$1"
     local exclude_list="$2"
     local -n sc="$3"
@@ -111,7 +111,7 @@ bach::__private::process_and_filter_subcommands() {
     # Get available subcommands
     while IFS= read -r cmd; do
         [[ -n "$cmd" ]] && sc+=("$cmd")
-    done < <(bach::__private::get_available_subcommands "$script_dir" "$exclude_list")
+    done < <(bach::docstring_helper::__private::get_available_subcommands "$script_dir" "$exclude_list")
 
     # Note: We don't filter out directories without main.sh here
     # because they might have nested subcommands that should be shown
@@ -129,7 +129,7 @@ bach::__private::process_and_filter_subcommands() {
 #   $2: Name reference to has_usage_section
 #   $3: Name reference to has_options_section
 #   $4: Name reference to has_user_options
-bach::__private::detect_sections_and_options() {
+bach::docstring_helper::__private::detect_sections_and_options() {
     local doc_string="$1"
     local -n hus="$2"
     local -n hos="$3"
@@ -154,7 +154,7 @@ bach::__private::detect_sections_and_options() {
 #   $2: Subcommand name
 #   $3: Exclude list
 #   $4: Name reference to expanded array
-bach::__private::expand_nested_subcommands() {
+bach::docstring_helper::__private::expand_nested_subcommands() {
     local script_dir="$1"
     local subcmd="$2"
     local exclude_list="$3"
@@ -179,7 +179,7 @@ bach::__private::expand_nested_subcommands() {
     local -a nested_subcommands=()
     while IFS= read -r cmd; do
         [[ -n "$cmd" ]] && nested_subcommands+=("$cmd")
-    done < <(bach::get_available_subcommands "$subcmd_path" "$exclude_list")
+    done < <(bach::docstring_helper::get_available_subcommands "$subcmd_path" "$exclude_list")
 
     for nested in "${nested_subcommands[@]}"; do
         expanded+=("$subcmd $nested")
@@ -196,7 +196,7 @@ bach::__private::expand_nested_subcommands() {
 #   $6: Name reference to custom usage lines array
 # Returns:
 #   echoes the injected usage section
-bach::__private::inject_usage_section() {
+bach::docstring_helper::__private::inject_usage_section() {
     local cmd_name="$1"
     local -n subcmds_ref="$2"
     local script_dir="$3"
@@ -221,7 +221,7 @@ bach::__private::inject_usage_section() {
     else
         # Expand subcommands (handle nested folders without main.sh)
         for subcmd in "${subcmds_ref[@]}"; do
-            bach::__private::expand_nested_subcommands "$script_dir" "$subcmd" "$exclude_list" final_subcommands
+            bach::docstring_helper::__private::expand_nested_subcommands "$script_dir" "$subcmd" "$exclude_list" final_subcommands
         done
     fi
 
@@ -230,7 +230,7 @@ bach::__private::inject_usage_section() {
         # Generate usage lines for subcommands
         for subcmd in "${final_subcommands[@]}"; do
             if [[ -n "$script_dir" ]]; then
-                local subcmd_file=$(bach::__private::get_subcommand_file "$script_dir" "$subcmd" "$exclude_list")
+                local subcmd_file=$(bach::docstring_helper::__private::get_subcommand_file "$script_dir" "$subcmd" "$exclude_list")
                 output+="    ${cmd_name} ${subcmd}  # Execute ${subcmd_file}"$'\n'
             else
                 # Pre-expanded subcommands don't include file paths
@@ -273,7 +273,7 @@ bach::__private::inject_usage_section() {
 #   $8: Has user options flag
 # Returns:
 #   echoes the processed docstring
-bach::__private::process_docstring() {
+bach::docstring_helper::__private::process_docstring() {
     local doc_string="$1"
     local cmd_name="$2"
     local -n subcmds_ref="$3"
@@ -321,7 +321,7 @@ bach::__private::process_docstring() {
             usage_injected=true
 
             # Inject our usage section with custom lines
-            output+=$(bach::__private::inject_usage_section "$cmd_name" local_subcmds "$script_dir" "$exclude_list" "$has_user_options" custom_usage_lines)
+            output+=$(bach::docstring_helper::__private::inject_usage_section "$cmd_name" local_subcmds "$script_dir" "$exclude_list" "$has_user_options" custom_usage_lines)
             output+=$'\n'
             continue
         fi
@@ -339,7 +339,7 @@ bach::__private::process_docstring() {
         # Inject usage before Options section if not yet injected
         if [[ "$line" =~ ^[[:space:]]*(Options:)[[:space:]]*$ ]] && [[ "$usage_injected" == false ]]; then
             output+=$'\n'
-            output+=$(bach::__private::inject_usage_section "$cmd_name" local_subcmds "$script_dir" "$exclude_list" "$has_user_options" custom_usage_lines)
+            output+=$(bach::docstring_helper::__private::inject_usage_section "$cmd_name" local_subcmds "$script_dir" "$exclude_list" "$has_user_options" custom_usage_lines)
             output+=$'\n'
             usage_injected=true
         fi
@@ -347,7 +347,7 @@ bach::__private::process_docstring() {
         # Inject usage before separator if not yet injected and no Options section
         if [[ "$line" =~ ^-+$ ]] && [[ "$usage_injected" == false ]] && [[ "$has_options_section" == false ]]; then
             output+=$'\n'
-            output+=$(bach::__private::inject_usage_section "$cmd_name" local_subcmds "$script_dir" "$exclude_list" "$has_user_options" custom_usage_lines)
+            output+=$(bach::docstring_helper::__private::inject_usage_section "$cmd_name" local_subcmds "$script_dir" "$exclude_list" "$has_user_options" custom_usage_lines)
             output+=$'\n'
             output+="Options:"$'\n'
             output+="    -h, --help              Show this help message"$'\n'
@@ -373,7 +373,7 @@ bach::__private::process_docstring() {
 #   $1: Documentation string
 # Returns:
 #   Prints version string
-bach::get_version_from_doc() {
+bach::docstring_helper::get_version_from_doc() {
     local doc_string="$1"
     local version=""
 
@@ -404,7 +404,7 @@ bach::get_version_from_doc() {
 #   $3: Comma-separated list of excluded files/patterns
 # Returns:
 #   Prints the relative file path for the subcommand
-bach::__private::get_subcommand_file() {
+bach::docstring_helper::__private::get_subcommand_file() {
     local script_dir="$1"
     local subcmd="$2"
     local exclude_list="$3"
@@ -431,7 +431,7 @@ bach::__private::get_subcommand_file() {
             if [[ $i -eq $((${#parts[@]} - 1)) ]]; then
                 # Check for .sh file
                 if [[ -f "$current_dir/${part}.sh" && -x "$current_dir/${part}.sh" ]]; then
-                    if ! bach::__private::is_excluded "$current_dir/${part}.sh" "${exclude_array[@]}"; then
+                    if ! bach::docstring_helper::__private::is_excluded "$current_dir/${part}.sh" "${exclude_array[@]}"; then
                         echo "${path_parts}${part}.sh"
                         return
                     fi
@@ -439,7 +439,7 @@ bach::__private::get_subcommand_file() {
 
                 # Check for file without extension
                 if [[ -f "$current_dir/${part}" && -x "$current_dir/${part}" ]]; then
-                    if ! bach::__private::is_excluded "$current_dir/${part}" "${exclude_array[@]}"; then
+                    if ! bach::docstring_helper::__private::is_excluded "$current_dir/${part}" "${exclude_array[@]}"; then
                         echo "${path_parts}${part}"
                         return
                     fi
@@ -448,12 +448,12 @@ bach::__private::get_subcommand_file() {
                 # Check for directory with main.sh
                 if [[ -d "$current_dir/${part}" ]]; then
                     if [[ -f "$current_dir/${part}/main.sh" && -x "$current_dir/${part}/main.sh" ]]; then
-                        if ! bach::__private::is_excluded "$current_dir/${part}/main.sh" "${exclude_array[@]}"; then
+                        if ! bach::docstring_helper::__private::is_excluded "$current_dir/${part}/main.sh" "${exclude_array[@]}"; then
                             echo "${path_parts}${part}/main.sh"
                             return
                         fi
                     elif [[ -f "$current_dir/${part}/main" && -x "$current_dir/${part}/main" ]]; then
-                        if ! bach::__private::is_excluded "$current_dir/${part}/main" "${exclude_array[@]}"; then
+                        if ! bach::docstring_helper::__private::is_excluded "$current_dir/${part}/main" "${exclude_array[@]}"; then
                             echo "${path_parts}${part}/main"
                             return
                         fi
@@ -471,7 +471,7 @@ bach::__private::get_subcommand_file() {
     # Single-level subcommand (original logic)
     # Check for .sh file
     if [[ -f "$script_dir/${subcmd}.sh" && -x "$script_dir/${subcmd}.sh" ]]; then
-        if ! bach::__private::is_excluded "$script_dir/${subcmd}.sh" "${exclude_array[@]}"; then
+        if ! bach::docstring_helper::__private::is_excluded "$script_dir/${subcmd}.sh" "${exclude_array[@]}"; then
             echo "${subcmd}.sh"
             return
         fi
@@ -479,7 +479,7 @@ bach::__private::get_subcommand_file() {
 
     # Check for file without extension
     if [[ -f "$script_dir/${subcmd}" && -x "$script_dir/${subcmd}" ]]; then
-        if ! bach::__private::is_excluded "$script_dir/${subcmd}" "${exclude_array[@]}"; then
+        if ! bach::docstring_helper::__private::is_excluded "$script_dir/${subcmd}" "${exclude_array[@]}"; then
             echo "${subcmd}"
             return
         fi
@@ -488,12 +488,12 @@ bach::__private::get_subcommand_file() {
     # Check for directory with main.sh
     if [[ -d "$script_dir/${subcmd}" ]]; then
         if [[ -f "$script_dir/${subcmd}/main.sh" && -x "$script_dir/${subcmd}/main.sh" ]]; then
-            if ! bach::__private::is_excluded "$script_dir/${subcmd}/main.sh" "${exclude_array[@]}"; then
+            if ! bach::docstring_helper::__private::is_excluded "$script_dir/${subcmd}/main.sh" "${exclude_array[@]}"; then
                 echo "${subcmd}/main.sh"
                 return
             fi
         elif [[ -f "$script_dir/${subcmd}/main" && -x "$script_dir/${subcmd}/main" ]]; then
-            if ! bach::__private::is_excluded "$script_dir/${subcmd}/main" "${exclude_array[@]}"; then
+            if ! bach::docstring_helper::__private::is_excluded "$script_dir/${subcmd}/main" "${exclude_array[@]}"; then
                 echo "${subcmd}/main"
                 return
             fi
@@ -509,7 +509,7 @@ bach::__private::get_subcommand_file() {
 #   $4: Command name (optional, defaults to script basename)
 # Returns:
 #   Prints complete documentation with injected subcommands
-bach::build_documentation() {
+bach::docstring_helper::build_documentation() {
     local doc_string="$1"
     local script_dir="$2"
     local exclude_list="${3:-}"
@@ -522,17 +522,17 @@ bach::build_documentation() {
 
     # Process and filter subcommands
     local -a subcommands=()
-    bach::__private::process_and_filter_subcommands "$script_dir" "$exclude_list" subcommands
+    bach::docstring_helper::__private::process_and_filter_subcommands "$script_dir" "$exclude_list" subcommands
 
     # Detect sections
     local has_usage_section=false
     local has_options_section=false
     local has_user_options=false
-    bach::__private::detect_sections_and_options "$doc_string" \
+    bach::docstring_helper::__private::detect_sections_and_options "$doc_string" \
         has_usage_section has_options_section has_user_options
 
     # Process the docstring (usage will be injected at the right position)
-    local output=$(bach::__private::process_docstring "$doc_string" "$cmd_name" subcommands "$script_dir" "$exclude_list" "$has_usage_section" "$has_options_section" "$has_user_options")
+    local output=$(bach::docstring_helper::__private::process_docstring "$doc_string" "$cmd_name" subcommands "$script_dir" "$exclude_list" "$has_usage_section" "$has_options_section" "$has_user_options")
 
     echo -n "$output"
 }
@@ -544,7 +544,7 @@ bach::build_documentation() {
 #   $3: Reference to exclude array
 # Returns:
 #   Prints subcommand lines
-bach::__private::inject_subcommands() {
+bach::docstring_helper::__private::inject_subcommands() {
     local script_dir="$1"
     local indent="$2"
     local -n exclude_ref="$3"
@@ -562,7 +562,7 @@ bach::__private::inject_subcommands() {
     local -a subcommands=()
     while IFS= read -r cmd; do
         [[ -n "$cmd" ]] && subcommands+=("$cmd")
-    done < <(bach::__private::get_available_subcommands "$script_dir" "$exclude_list")
+    done < <(bach::docstring_helper::__private::get_available_subcommands "$script_dir" "$exclude_list")
 
     # Sort and output subcommands
     if [[ ${#subcommands[@]} -gt 0 ]]; then
@@ -580,16 +580,16 @@ bach::__private::inject_subcommands() {
 # Print documentation to stdout
 # Arguments:
 #   $1: Documentation string
-bach::print_doc() {
+bach::docstring_helper::print_doc() {
     echo "$1"
 }
 
 # Print version to stdout
 # Arguments:
 #   $1: Documentation string
-bach::print_version() {
+bach::docstring_helper::print_version() {
     local doc_string="$1"
-    local version=$(bach::get_version_from_doc "$doc_string")
+    local version=$(bach::docstring_helper::get_version_from_doc "$doc_string")
     echo "${version}"
 }
 
@@ -597,10 +597,10 @@ bach::print_version() {
 # Arguments:
 #   $1: Documentation string
 #   $2: Command name
-#   $3: Newline-separated list of subcommands (from bach::get_subcommands)
+#   $3: Newline-separated list of subcommands (from bach::docstring_helper::get_subcommands)
 # Returns:
 #   Prints resolved documentation with usage section and help/version options
-bach::resolve_docstring() {
+bach::docstring_helper::resolve_docstring() {
     local doc_string="$1"
     local cmd_name="$2"
     local subcommands_list="$3"
@@ -615,28 +615,28 @@ bach::resolve_docstring() {
     local has_usage_section=false
     local has_options_section=false
     local has_user_options=false
-    bach::__private::detect_sections_and_options "$doc_string" \
+    bach::docstring_helper::__private::detect_sections_and_options "$doc_string" \
         has_usage_section has_options_section has_user_options
 
     # Process the docstring (usage will be injected at the right position)
-    local output=$(bach::__private::process_docstring "$doc_string" "$cmd_name" subcommands "" "" "$has_usage_section" "$has_options_section" "$has_user_options")
+    local output=$(bach::docstring_helper::__private::process_docstring "$doc_string" "$cmd_name" subcommands "" "" "$has_usage_section" "$has_options_section" "$has_user_options")
 
     echo -n "$output"
 }
 
 # Export functions
-export -f bach::get_version_from_doc
-export -f bach::__private::is_excluded
-export -f bach::__private::has_executable_main
-export -f bach::__private::get_available_subcommands
-export -f bach::__private::process_and_filter_subcommands
-export -f bach::__private::detect_sections_and_options
-export -f bach::__private::expand_nested_subcommands
-export -f bach::__private::inject_usage_section
-export -f bach::__private::process_docstring
-export -f bach::build_documentation
-export -f bach::resolve_docstring
-export -f bach::__private::inject_subcommands
-export -f bach::__private::get_subcommand_file
-export -f bach::print_doc
-export -f bach::print_version
+export -f bach::docstring_helper::get_version_from_doc
+export -f bach::docstring_helper::__private::is_excluded
+export -f bach::docstring_helper::__private::has_executable_main
+export -f bach::docstring_helper::__private::get_available_subcommands
+export -f bach::docstring_helper::__private::process_and_filter_subcommands
+export -f bach::docstring_helper::__private::detect_sections_and_options
+export -f bach::docstring_helper::__private::expand_nested_subcommands
+export -f bach::docstring_helper::__private::inject_usage_section
+export -f bach::docstring_helper::__private::process_docstring
+export -f bach::docstring_helper::build_documentation
+export -f bach::docstring_helper::resolve_docstring
+export -f bach::docstring_helper::__private::inject_subcommands
+export -f bach::docstring_helper::__private::get_subcommand_file
+export -f bach::docstring_helper::print_doc
+export -f bach::docstring_helper::print_version
