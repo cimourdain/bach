@@ -1,7 +1,34 @@
 #!/bin/bash
 
+################################################################################
+# CLI Helpers
+################################################################################
+# Description:
+#   Build command line tools made of subcommands stored as scripts next to
+#   the main script: subcommands discovery, execution and docstring setup.
+#
+# Usage:
+#   source /path/to/cli.sh
+#   bach cli::get_subcommands "$script_dir"
+#   bach cli::execute_subcommand
+#
+# Dependencies:
+#   - bash 4.0+
+#   - bach function (bach.sh)
+#   - docstring_helper and parse_args libraries (setup::from_docstring)
+#
+# Author: BACHCLI Project
+# Version: 1.0.0
+################################################################################
+
 # Prevent re-sourcing if functions already declared
-if declare -F bach::cli::get_subcommands &>/dev/null && declare -F bach::cli::execute_subcommand &>/dev/null; then
+if declare -F bach::cli::config::script_extensions &>/dev/null && \
+   declare -F bach::cli::config::command_directory_main_file_root_name &>/dev/null && \
+   declare -F bach::cli::config::exclude_list &>/dev/null && \
+   declare -F bach::cli::config::commands_path_args_array_global_var_name &>/dev/null && \
+   declare -F bach::cli::get_subcommands &>/dev/null && \
+   declare -F bach::cli::execute_subcommand &>/dev/null && \
+   declare -F bach::cli::setup::from_docstring &>/dev/null; then
     return 0
 fi
 
@@ -11,12 +38,104 @@ if [[ -z "${__BACH_CLI_CONFIG}" ]]; then
     declare -gA __BACH_CLI_CONFIG=(
         [commands_scripts_extensions]=",.sh," # Default log level for program execution, can be overridden by setting the BACH_LOG_LEVEL environment variable or by passing a log level as the first argument when invoking a bach function
         [command_directory_main_file_root_name]="main" # Default name for main command file without extension, e.g. "main" for "main.sh"
-        [exclude_list]="const.sh,statics.sh,lib" # Default comma-separated list of files/directories to exclude when searching for subcommands
+        [exclude_list]="" # Default comma-separated list of files/directories to exclude when searching for subcommands
         [commands_path_args_array_global_var_name]="__BACH_CLI_PATH_ARGS" # Name of the global variable to store path arguments for subcommand execution
     )
 fi
 
-# Helper function to check if item is excluded (private)
+################################################################################
+# Set the extensions of the scripts considered as subcommands
+# Arguments:
+#   $1 - extensions: Comma separated list of extensions (default: "")
+# Globals:
+#   __BACH_CLI_CONFIG[commands_scripts_extensions] - Updated
+# Returns:
+#   0 always
+################################################################################
+bach::cli::config::script_extensions() {
+    local script_extensions_comma_separated_string
+    script_extensions_comma_separated_string="${1:-""}"
+    __BACH_CLI_CONFIG["commands_scripts_extensions"]="${script_extensions_comma_separated_string}"
+
+    bach log --debug "Script extensions set to: ${script_extensions_comma_separated_string}"
+}
+export -f bach::cli::config::script_extensions
+
+################################################################################
+# Set the name (without extension) of the main script of a command directory
+# Arguments:
+#   $1 - name: Main file root name (e.g. "main" for main.sh)
+# Globals:
+#   __BACH_CLI_CONFIG[command_directory_main_file_root_name] - Updated
+# Returns:
+#   0 on success, 1 if the name is empty
+################################################################################
+bach::cli::config::command_directory_main_file_root_name() {
+    local command_directory_main_file_root_name
+    command_directory_main_file_root_name="${1:-""}"
+    __BACH_CLI_CONFIG["command_directory_main_file_root_name"]="${command_directory_main_file_root_name}"
+
+    if [[ -z "$command_directory_main_file_root_name" ]]; then
+        bach log --error "Command directory main file root name cannot be empty"
+        return 1
+    fi
+
+    bach log --debug "Command directory main file root name set to: ${command_directory_main_file_root_name}"
+}
+export -f bach::cli::config::command_directory_main_file_root_name
+
+################################################################################
+# Set the list of files and directories excluded from subcommands discovery
+# Arguments:
+#   $1 - exclude_list: Comma separated list of patterns (default: "")
+# Globals:
+#   __BACH_CLI_CONFIG[exclude_list] - Updated
+# Returns:
+#   0 always
+################################################################################
+bach::cli::config::exclude_list() {
+    local exclude_list_comma_separated_string
+    exclude_list_comma_separated_string="${1:-""}"
+    __BACH_CLI_CONFIG["exclude_list"]="${exclude_list_comma_separated_string}"
+
+    bach log --debug "Exclude list set to: ${exclude_list_comma_separated_string}"
+}
+export -f bach::cli::config::exclude_list
+
+################################################################################
+# Set the name of the global array storing the path arguments of subcommands
+# Arguments:
+#   $1 - var_name: Name of the global array
+# Globals:
+#   __BACH_CLI_CONFIG[commands_path_args_array_global_var_name] - Updated
+# Returns:
+#   0 on success, 1 if the name is empty
+################################################################################
+bach::cli::config::commands_path_args_array_global_var_name() {
+    local commands_path_args_array_global_var_name
+    commands_path_args_array_global_var_name="${1}"
+
+    if [[ -z "$commands_path_args_array_global_var_name" ]]; then
+        bach log --error "Global variable name for commands path args array cannot be empty"
+        return 1
+    fi
+
+    __BACH_CLI_CONFIG["commands_path_args_array_global_var_name"]="${commands_path_args_array_global_var_name}"
+
+    bach log --debug "Commands path args array global var name set to: ${commands_path_args_array_global_var_name}"
+}
+export -f bach::cli::config::commands_path_args_array_global_var_name
+
+
+
+################################################################################
+# Check if an item matches an exclusion pattern (private)
+# Arguments:
+#   $1 - item: Path of the item
+#   $@ - patterns: Exclusion patterns (matched against the item name or path)
+# Returns:
+#   0 if the item is excluded, 1 otherwise
+################################################################################
 bach::cli::__private::is_excluded() {
     local item="$1"
     local item_name=$(basename "$item")
@@ -31,6 +150,17 @@ bach::cli::__private::is_excluded() {
     return 1
 }
 
+################################################################################
+# Get the exclusion patterns as a list (private)
+# Arguments:
+#   $1 - exclude_list: Comma separated patterns (default: configured exclude list)
+# Globals:
+#   __BACH_CLI_CONFIG[exclude_list] - Default value
+# Outputs:
+#   Space separated patterns
+# Returns:
+#   0 always
+################################################################################
 bach::cli::__private::get_exclude_list_array() {
     local exclude_list_comma_separated_string_default
     exclude_list_comma_separated_string_default="${__BACH_CLI_CONFIG[exclude_list]}"
@@ -41,6 +171,18 @@ bach::cli::__private::get_exclude_list_array() {
 }
 
 
+################################################################################
+# Find the executable script matching a path, trying each allowed extension (private)
+# Arguments:
+#   $1 - path: Script path without extension
+#   $2 - extensions: Comma separated extensions (default: configured extensions)
+# Globals:
+#   __BACH_CLI_CONFIG[commands_scripts_extensions] - Default value
+# Outputs:
+#   The path of the executable script, or an empty string
+# Returns:
+#   0 if a script is found, 1 otherwise
+################################################################################
 bach::cli::__private::get_valid_subcommand_script_path() {
     local path="$1"
 
@@ -162,15 +304,27 @@ bach::cli::__private::get_available_subcommands() {
 #   Prints newline-separated list of expanded subcommands (includes nested like "stwo foo")
 bach::cli::get_subcommands() {
     local script_dir="$1"
-    local exclude_list="$2"
+    if [[ ! -d "$script_dir" ]]; then
+        bach log --error "Provided script directory does not exist: ${script_dir}"
+        return 1
+    fi
 
-    [[ ! -d "$script_dir" ]] && return
+    local exclude_list
+    exclude_list="$2"
+    if [[ -n "$exclude_list" ]]; then
+        exclude_list="${exclude_list},${__BACH_CLI_CONFIG[exclude_list]}"
+    else
+        exclude_list="${__BACH_CLI_CONFIG[exclude_list]}"
+    fi
+    bach log --verbose "Get subcommands for directory: ${script_dir}"
+    bach log --verbose --delimiter="," "exclude_list" "${exclude_list}"
 
     # Get base subcommands
     local -a subcommands=()
     while IFS= read -r cmd; do
         [[ -n "$cmd" ]] && subcommands+=("$cmd")
     done < <(bach::cli::__private::get_available_subcommands "$script_dir" "$exclude_list")
+    bach log --verbose --array-ref=subcommands "subcommands"
 
     # Expand nested subcommands
     local -a expanded_subcommands=()
@@ -210,15 +364,26 @@ bach::cli::get_subcommands() {
 export -f bach::cli::get_subcommands
 
 
+################################################################################
+# Replace the current process by a subcommand script (private)
+# The path arguments already consumed to reach the script are removed from the path arguments array.
+# Arguments:
+#   $1 - script_path: Script to execute
+#   $2 - args_array_index: Number of leading path arguments to remove
+# Globals:
+#   __BACH_CONFIG[commands_path_args_array_global_var_name] - Name of the path arguments array, which is updated
+# Returns:
+#   Exit status of the script (exec replaces the process on success)
+################################################################################
 bach::cli::__private::execute_subcommand_script(){
     local script_path="$1"
     local args_array_index="$2"
     local -n path_args_array="${__BACH_CONFIG[commands_path_args_array_global_var_name]}"
 
-    bach log --verbose "[execute_subcommand]Update path arguments array, remove ${args_array_index} leading segments, remaining args: ${path_args_array[*]:$args_array_index}"
+    bach log --verbose "Update path arguments array, remove ${args_array_index} leading segments, remaining args: ${path_args_array[*]:$args_array_index}"
     path_args_array=("${path_args_array[@]:$args_array_index}")
 
-    bach log --verbose "[execute_subcommand]Executing subcommand script at path: ${script_path}"
+    bach log --verbose "Executing subcommand script at path: ${script_path}"
     # TODO: replace exec with ./
     exec "${script_path}"
 
@@ -226,11 +391,23 @@ bach::cli::__private::execute_subcommand_script(){
 }
 
 
+################################################################################
+# Execute the subcommand designated by the path arguments
+# Looks, from the directory of the caller script, for a directory with a main script or an executable script matching successive path arguments.
+# Arguments:
+#   None
+# Globals:
+#   __BACH_CLI_CONFIG[commands_path_args_array_global_var_name] - Name of the path arguments array
+# Returns:
+#   0 if there is no path argument
+#   1 if no subcommand is found
+#   Otherwise the process is replaced by the subcommand script
+################################################################################
 bach::cli::execute_subcommand(){
     local caller_script_path
     caller_script_path="${BASH_SOURCE[1]}"
 
-    local -n path_args_array="${__BACH_CONFIG[commands_path_args_array_global_var_name]}"
+    local -n path_args_array="${__BACH_CLI_CONFIG[commands_path_args_array_global_var_name]}"
 
     if [[ -z "${path_args_array[*]}" ]] || [[ "${#path_args_array[@]}" -eq 0 ]]; then
         bach log --verbose "In ${caller_script_path}: No arguments provided to execute_subcommand. Nothing to execute."
@@ -247,13 +424,13 @@ bach::cli::execute_subcommand(){
     local next_command_script_path
     for ((i=0; i<${#path_args_array[@]}; i++)); do
         next_command_path+="${path_args_array[i]}"
-        bach log --verbose "[execute_subcommand]Inspect path: ${next_command_path}, remaining args: ${path_args_array[*]}"
+        bach log --verbose "Inspect path: ${next_command_path}, remaining args: ${path_args_array[*]}"
 
         if [[ -d "$next_command_path" ]]; then
-            bach log --verbose "[execute_subcommand]Inspect path: ${next_command_path}, search for main script in directory"
+            bach log --verbose "Inspect path: ${next_command_path}, search for main script in directory"
             next_command_directory_main_script_path=$(bach::cli::__private::get_directory_main_script_path "$next_command_path")
             if [[ -n "$next_command_directory_main_script_path" ]]; then
-                bach log --debug "[execute_subcommand]Inspect path: ${next_command_path}, execute the found main script: ${next_command_directory_main_script_path}"
+                bach log --debug "Inspect path: ${next_command_path}, execute the found main script: ${next_command_directory_main_script_path}"
                 bach::cli::__private::execute_subcommand_script "$next_command_directory_main_script_path" "$((i+1))"
                 return $?
             fi
@@ -261,16 +438,16 @@ bach::cli::execute_subcommand(){
 
         next_command_script_path=$(bach::cli::__private::get_valid_subcommand_script_path "$next_command_path")
         if [[ -n "$next_command_script_path" ]]; then
-            bach log --verbose "[execute_subcommand]Inspect path: ${next_command_path}, execute script ${next_command_script_path}"
+            bach log --verbose "Inspect path: ${next_command_path}, execute script ${next_command_script_path}"
             bach::cli::__private::execute_subcommand_script "$next_command_script_path" "$((i+1))"
             return $?
         else
-            bach log --verbose "[execute_subcommand] ${next_command_path} is neither a directory with main script nor an executable file, continue searching with next path segment"
+            bach log --verbose "${next_command_path} is neither a directory with main script nor an executable file, continue searching with next path segment"
         fi
         next_command_path+="/"
     done
 
-    bach log --error "[execute_subcommand]Command '$next_command_name' not found as executable file or directory in ${caller_script_dir}"
+    bach log --error "Command '$next_command_name' not found as executable file or directory in ${caller_script_dir}"
     return 1
 }
 
@@ -373,6 +550,19 @@ bach::cli::execute_subcommand(){
 export -f bach::cli::execute_subcommand
 
 
+################################################################################
+# Set up a command from its docstring: resolve the documentation and parse the arguments
+# Discovers the subcommands next to the caller script, resolves the docstring (usage, help, version) and parses the arguments from it.
+# Arguments:
+#   $1 - doc_string: Documentation string of the command
+#   $2 - exclude_list: Comma separated patterns excluded from subcommands discovery
+#   $@ - Command line arguments to parse
+# Globals:
+#   __BACH_CLI_CONFIG[command_directory_main_file_root_name] - Used to name the command
+#   Parsed arguments global variables - Set by bach::parse_args::from_spec
+# Returns:
+#   0 if the arguments are parsed successfully, 1 otherwise
+################################################################################
 bach::cli::setup::from_docstring() {
     local caller_script_relative_path
     caller_script_relative_path="${BASH_SOURCE[2]}"
@@ -387,17 +577,21 @@ bach::cli::setup::from_docstring() {
     local caller_script_dirname
     caller_script_dirname="$(basename -- "$caller_script_dirpath")"
 
-    bach log --verbose "[bach::cli::setup::from_docstring]I was executed from script: ${caller_script_path} located in directory: ${caller_script_dirpath}"
+    bach log --verbose "I was executed from script: ${caller_script_path} located in directory: ${caller_script_dirpath}"
 
-    local doc_string="$1"
-    shift 1
+    local doc_string
+    doc_string="$1"
 
-    bach log --verbose "[bach::cli::setup::from_docstring]Get available subcommands reading directory ${caller_script_dirpath}"
+    local exclude_list
+    exclude_list="${2:-""}"
+    shift 2
+
+    bach log --verbose "Get available subcommands reading directory ${caller_script_dirpath}"
     local available_subcommands
-    available_subcommands=$(bach cli::get_subcommands "${caller_script_dirpath}")
-    bach log --verbose "[bach::cli::setup::from_docstring]Available subcommands found: ${available_subcommands//$'\n'/, }"
+    available_subcommands=$(bach cli::get_subcommands "${caller_script_dirpath}" "$exclude_list")
+    bach log --verbose "Available subcommands found: ${available_subcommands//$'\n'/, }"
 
-    bach log --verbose "[bach::cli::setup::from_docstring]Get command name from script ${caller_script_path}"
+    bach log --verbose "Get command name from script ${caller_script_path}"
     local cmd_name
     local caller_script_filename_without_ext="${caller_script_filename%.*}"
     if [[ "$caller_script_filename_without_ext" == "${__BACH_CLI_CONFIG[command_directory_main_file_root_name]}" ]]; then
@@ -405,20 +599,23 @@ bach::cli::setup::from_docstring() {
     else
         cmd_name="$caller_script_filename_without_ext"
     fi
-    bach log --verbose "[bach::cli::setup::from_docstring]${caller_script_path}Determined command name: ${cmd_name}"
+    bach log --verbose "from path ${caller_script_path}: Resolve docstring for command: ${cmd_name}"
 
-    bach log --verbose "[bach::cli::setup::from_docstring]${caller_script_path}Resolve docstring for command: ${cmd_name}"
     local resolved_docstring
     resolved_docstring=$(bach docstring_helper::resolve_docstring "${doc_string}" "${cmd_name}" "${available_subcommands}")
-    bach log --verbose "[bach::cli::setup::from_docstring]Resolved docstring for CLI setup ${resolved_docstring}"
+    bach log --verbose "from path ${caller_script_path}: Resolved docstring for CLI setup ${resolved_docstring}"
 
     # TODO: How to ensure this function is declared?
-    bach parse_args::from_docstring "${resolved_docstring}" "$@"
-    bach log --verbose "[bach::cli::setup::from_docstring]Resolved docstring for CLI setup ${resolved_docstring}"
+    bach parse_args::from_spec "${resolved_docstring}" "$@"
     case $? in
-        0) ;;  # Continue execution
-        2|3) return 0 ;;  # Help or version was handled
-        *) return 1 ;;  # Parse error
+        0)
+            bach log --verbose "Arguments parsed successfully, continue with execution"
+            return 0
+            ;;  # Continue execution
+        *)
+            bach log --verbose "Non zero exit code from parse_args::from_spec, exiting with code 1"
+            return 1
+        ;;
     esac
 }
 export -f bach::cli::setup::from_docstring

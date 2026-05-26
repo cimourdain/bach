@@ -1,11 +1,39 @@
 #!/bin/bash
 
-# Prevent re-sourcing if function already declared
-if declare -F bach::term_utils::declare_colors &>/dev/null; then
-    echo "bach::term_utils::declare_colors already declared, skipping re-source." >&2
+################################################################################
+# Terminal Utilities
+################################################################################
+# Description:
+#   Terminal colors helpers based on tput.
+#
+# Usage:
+#   source /path/to/term_utils.sh
+#   bach term_utils::declare_colors
+#
+# Dependencies:
+#   - bash 4.0+
+#   - tput
+#
+# Author: BACHCLI Project
+# Version: 1.0.0
+################################################################################
+
+# Prevent re-sourcing if functions already declared
+if declare -F bach::term_utils::declare_colors &>/dev/null && \
+   declare -F bach::term_utils::colors_tput_demo &>/dev/null; then
     return 0
 fi
 
+################################################################################
+# Declare the global associative array of terminal colors
+# Colors are built with tput. Nothing is done if the array is already declared.
+# Arguments:
+#   None
+# Globals:
+#   __BACH_TERM_COLORS - Declared (reset, bold, underline, reverse and the 16 named colors)
+# Returns:
+#   0 always
+################################################################################
 bach::term_utils::declare_colors() {
     if [[ -z "${__BACH_TERM_COLORS}" ]]; then
         # echo "bach::term_utils::declare_colors declare __BACH_TERM_COLORS." >&2
@@ -41,7 +69,16 @@ bach::term_utils::declare_colors() {
 export -f bach::term_utils::declare_colors
 
 
+################################################################################
+# Display the 256 tput colors with their index
 # Source: https://unix.stackexchange.com/a/521120
+# Arguments:
+#   None
+# Outputs:
+#   The color table on stdout
+# Returns:
+#   0 always
+################################################################################
 bach::term_utils::colors_tput_demo() {
     for ((i=0; i<256; i++)) ;do
         echo -n '  '

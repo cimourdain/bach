@@ -1,18 +1,43 @@
 #!/bin/bash
 
+################################################################################
+# Docstring Helper
+################################################################################
+# Description:
+#   Build and resolve command documentation: subcommands discovery, usage,
+#   help and version injection, version extraction.
+#
+# Usage:
+#   source /path/to/docstring_helper.sh
+#   bach docstring_helper::resolve_docstring "$doc" "$cmd_name" "$subcommands"
+#
+# Dependencies:
+#   - bash 4.0+
+#
+# Author: BACHCLI Project
+# Version: 1.0.0
+################################################################################
+
 # Get the directory where this library is located
 __DOC_HELPER_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Prevent re-sourcing if functions already declared
-if declare -F bach::docstring_helper::get_version_from_doc &>/dev/null && \
+if declare -F bach::docstring_helper::resolve_docstring &>/dev/null && \
+   declare -F bach::docstring_helper::get_version_from_doc &>/dev/null && \
    declare -F bach::docstring_helper::build_documentation &>/dev/null && \
-   declare -F bach::docstring_helper::__private::inject_subcommands &>/dev/null && \
    declare -F bach::docstring_helper::print_doc &>/dev/null && \
    declare -F bach::docstring_helper::print_version &>/dev/null; then
     return 0
 fi
 
-# Helper function to check if item is excluded (private)
+################################################################################
+# Check if an item matches an exclusion pattern (private)
+# Arguments:
+#   $1 - item: Path of the item
+#   $@ - patterns: Exclusion patterns (matched against the item name or path)
+# Returns:
+#   0 if the item is excluded, 1 otherwise
+################################################################################
 bach::docstring_helper::__private::is_excluded() {
     local item="$1"
     local item_name=$(basename "$item")
@@ -27,7 +52,13 @@ bach::docstring_helper::__private::is_excluded() {
     return 1
 }
 
-# Check if directory has an executable main script (private)
+################################################################################
+# Check if a directory has an executable main script (private)
+# Arguments:
+#   $1 - dir: Directory path
+# Returns:
+#   0 if main.sh or main exists and is executable, 1 otherwise
+################################################################################
 bach::docstring_helper::__private::has_executable_main() {
     local dir="$1"
 
@@ -39,8 +70,17 @@ bach::docstring_helper::__private::has_executable_main() {
     return 1
 }
 
-# Get list of available subcommands in a directory (private)
-# Used internally by bach::docstring_helper::build_documentation for tests
+################################################################################
+# Get the list of available subcommands in a directory (private)
+# Used internally by bach::docstring_helper::build_documentation, for tests.
+# Arguments:
+#   $1 - base_dir: Directory to scan
+#   $2 - exclude_list: Comma separated patterns to exclude
+# Outputs:
+#   One subcommand per line
+# Returns:
+#   0 always
+################################################################################
 bach::docstring_helper::__private::get_available_subcommands() {
     local base_dir="$1"
     local exclude_list="$2"
@@ -96,11 +136,17 @@ bach::docstring_helper::__private::get_available_subcommands() {
     done
 }
 
-# Process and filter subcommands (private)
+################################################################################
+# Collect and sort the subcommands of a directory (private)
 # Arguments:
-#   $1: Script directory
-#   $2: Exclude list
-#   $3: Name reference to subcommands array
+#   $1 - script_dir: Directory to scan
+#   $2 - exclude_list: Comma separated patterns to exclude
+#   $3 - subcommands_array_name: Name reference to the array receiving the subcommands
+# Globals:
+#   <subcommands_array_name> - Appended and sorted
+# Returns:
+#   0 always
+################################################################################
 bach::docstring_helper::__private::process_and_filter_subcommands() {
     local script_dir="$1"
     local exclude_list="$2"
@@ -123,12 +169,18 @@ bach::docstring_helper::__private::process_and_filter_subcommands() {
     fi
 }
 
-# Detect sections and user options in docstring (private)
+################################################################################
+# Detect sections and user options in a docstring (private)
 # Arguments:
-#   $1: Documentation string
-#   $2: Name reference to has_usage_section
-#   $3: Name reference to has_options_section
-#   $4: Name reference to has_user_options
+#   $1 - doc_string: Documentation string
+#   $2 - Name reference to has_usage_section
+#   $3 - Name reference to has_options_section
+#   $4 - Name reference to has_user_options
+# Globals:
+#   Referenced variables - Set to true when detected
+# Returns:
+#   0 always
+################################################################################
 bach::docstring_helper::__private::detect_sections_and_options() {
     local doc_string="$1"
     local -n hus="$2"
@@ -148,12 +200,18 @@ bach::docstring_helper::__private::detect_sections_and_options() {
     done <<< "$doc_string"
 }
 
-# Expand subcommands for directories without main.sh (private)
+################################################################################
+# Expand the subcommands of a directory without main script (private)
 # Arguments:
-#   $1: Script directory
-#   $2: Subcommand name
-#   $3: Exclude list
-#   $4: Name reference to expanded array
+#   $1 - script_dir: Script directory
+#   $2 - subcmd: Subcommand name
+#   $3 - exclude_list: Comma separated patterns to exclude
+#   $4 - Name reference to the expanded subcommands array
+# Globals:
+#   <expanded_array_name> - Appended
+# Returns:
+#   0 always
+################################################################################
 bach::docstring_helper::__private::expand_nested_subcommands() {
     local script_dir="$1"
     local subcmd="$2"
@@ -577,16 +635,28 @@ bach::docstring_helper::__private::inject_subcommands() {
     echo -n "$output"
 }
 
+################################################################################
 # Print documentation to stdout
 # Arguments:
-#   $1: Documentation string
+#   $1 - doc_string: Documentation string
+# Outputs:
+#   The documentation string
+# Returns:
+#   0 always
+################################################################################
 bach::docstring_helper::print_doc() {
     echo "$1"
 }
 
-# Print version to stdout
+################################################################################
+# Print the version found in a documentation string to stdout
 # Arguments:
-#   $1: Documentation string
+#   $1 - doc_string: Documentation string
+# Outputs:
+#   The version
+# Returns:
+#   0 always
+################################################################################
 bach::docstring_helper::print_version() {
     local doc_string="$1"
     local version=$(bach::docstring_helper::get_version_from_doc "$doc_string")

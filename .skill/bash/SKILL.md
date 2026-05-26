@@ -166,7 +166,7 @@ Test functions should follow naming conventions based on context:
 #### Library Tests
 
 - Prefix: `<library-name>_test::<function-name>`
-- Example: For `user_messages.sh`, use `user_messages_test::test_emoji_output`
+- Example: For `user_msg.sh`, use `user_msg_test::test_emoji_output`
 
 #### Script Tests
 

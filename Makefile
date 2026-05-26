@@ -1,4 +1,4 @@
-.PHONY: test test-libs test-cli help
+.PHONY: test test-libs test-cli help docs-install docs-preview docs-build doc\:fix
 
 # Default target
 help:
@@ -8,6 +8,9 @@ help:
 	@echo "  make test       - Run all tests from the repository"
 	@echo "  make test-libs  - Run all tests from libs/ folder"
 	@echo "  make test-cli   - Run all tests from tools/cli/ folder"
+	@echo "  make docs-preview - Preview the documentation locally (vitepress)"
+	@echo "  make docs-build   - Build the documentation"
+	@echo "  make doc:fix      - Refresh the expected outputs of the libraries documentation"
 	@echo ""
 
 # Run all tests from the repository
@@ -24,3 +27,17 @@ test-libs:
 test-cli:
 	@echo "Running tools/cli/ tests..."
 	@libs/tests.sh "tools/cli/**/*.test.sh"
+
+# Documentation (vitepress)
+docs-install:
+	@npm install
+
+docs-preview: docs-install
+	@DOCS_BASE=/ npm run dev
+
+docs-build: docs-install
+	@npm run build
+
+# Re-run the usage examples of libs/*.md and refresh their "Expected output" blocks
+doc\:fix:
+	@python3 docs/scripts/update_outputs.py
