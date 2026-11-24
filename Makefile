@@ -1,4 +1,4 @@
-.PHONY: test test-libs test-cli help docs-install docs-preview docs-build doc\:fix
+.PHONY: test test-libs help docs-install docs-preview docs-build doc\:fix
 
 # Default target
 help:
@@ -7,7 +7,6 @@ help:
 	@echo "Available targets:"
 	@echo "  make test       - Run all tests from the repository"
 	@echo "  make test-libs  - Run all tests from libs/ folder"
-	@echo "  make test-cli   - Run all tests from tools/cli/ folder"
 	@echo "  make docs-preview - Preview the documentation locally (vitepress)"
 	@echo "  make docs-build   - Build the documentation"
 	@echo "  make doc:fix      - Refresh the expected outputs of the libraries documentation"
@@ -16,17 +15,12 @@ help:
 # Run all tests from the repository
 test:
 	@echo "Running all tests..."
-	@libs/tests.sh "**/*.test.sh"
+	@./tests.sh "**/*.test.sh"
 
 # Run tests from libs/ folder
 test-libs:
 	@echo "Running libs/ tests..."
-	@libs/tests.sh "libs/*.test.sh"
-
-# Run tests from tools/cli/ folder
-test-cli:
-	@echo "Running tools/cli/ tests..."
-	@libs/tests.sh "tools/cli/**/*.test.sh"
+	@./tests.sh "libs/*.test.sh"
 
 # Documentation (vitepress)
 docs-install:

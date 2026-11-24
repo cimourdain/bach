@@ -161,7 +161,7 @@ bach::test_runner::main() {
 
     # Use provided project root or calculate from script directory
     # When called via wrapper, PROJECT_ROOT should be set
-    local project_root="${PROJECT_ROOT:-$(dirname "$script_dir")}"
+    local project_root="${PROJECT_ROOT:-$script_dir}"
 
     # Mark that we're running from test runner (exported for conditional behavior)
     export TEST_RUNNER=1

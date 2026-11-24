@@ -6,17 +6,33 @@ Bach is a **library manager for bash**. It aims to:
 - **Expose common libraries** covering everyday scripting needs: testing assertions, logging, argument parsing, user messages, terminal utilities and more.
 - **Provide a clear and complete documentation** for each library, with reference docs and runnable demos. See the [documentation](https://cimourdain.github.io/bach/).
 
-## Usage
+## Install
 
-```shell
+::: code-group
+
+```shell [Bach]
 $ mkdir -p lib/bach/
 # Download the main bach script
 $ curl -L -O --output-dir "lib/bach/" "https://raw.githubusercontent.com/cimourdain/bach/refs/heads/main/bach.sh"
 ```
 
-Use it in your bash scripts to dynamically import and use the libraries.
+```shell [Library]
+$ mkdir -p lib/bach/
+# Download only the library you need (here: log.sh)
+$ curl -L -O --output-dir "lib/bach/" "https://raw.githubusercontent.com/cimourdain/bach/refs/heads/main/libs/log.sh"
+# Its dependencies are listed in the documentation of the library: log.sh relies on the
+# `bach` function (bach.sh) to load term_utils.sh
+$ curl -L -O --output-dir "lib/bach/" "https://raw.githubusercontent.com/cimourdain/bach/refs/heads/main/bach.sh"
+$ curl -L -O --output-dir "lib/bach/" "https://raw.githubusercontent.com/cimourdain/bach/refs/heads/main/libs/term_utils.sh"
+```
 
-```bash
+:::
+
+## Usage
+
+::: code-group
+
+```bash [Bach]
 # Source the previously downloaded file to get the `bach` function
 source lib/bach/bach.sh
 
@@ -39,6 +55,20 @@ bach log "Hello"
 bach my_lib ... # call the bach::my_lib function
 bach my_lib::other_func ... # call the bach::my_lib::other_func function
 ```
+
+```bash [Library]
+# Source the `bach` function: the libraries use it to load their own dependencies
+source lib/bach/bach.sh
+
+# Source the library downloaded in the install step
+source lib/bach/log.sh
+
+# Call the functions of the library directly, by their full name
+bach::log "Hello"
+bach::log --info "Hello"
+```
+
+:::
 
 ## Libraries versions
 
@@ -101,3 +131,7 @@ bach log --info "Uses ./my-libs/log.sh"
 ```
 
 When your script runs from a clone of the bach repository, libraries are not downloaded: they are linked to the `libs/` folder of the clone, so your working copy is used.
+
+## Contributing
+
+See the [contributing guide](https://cimourdain.github.io/bach/contributing/usage) for the local development commands and the repository conventions.
