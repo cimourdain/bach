@@ -11,19 +11,19 @@
 #
 # Usage:
 #   source /path/to/assert.sh
-#   assert_contains "$output" "expected" "Test description"
+#   bach::assert::contains "$output" "expected" "Test description"
 #
 # Examples:
 #   # Test that output contains a string
 #   output=$(my_command)
-#   assert_contains "$output" "success" "Command should succeed"
+#   bach::assert::contains "$output" "success" "Command should succeed"
 #
 #   # Test that output is empty
 #   output=$(silent_command)
-#   assert_empty "$output" "Command should produce no output"
+#   bach::assert::empty "$output" "Command should produce no output"
 #
 #   # Print test section header
-#   section "Testing feature X"
+#   bach::assert::section "Testing feature X"
 #
 # Dependencies:
 #   - bash 4.0+
@@ -33,11 +33,11 @@
 ################################################################################
 
 # Prevent re-sourcing if functions already declared
-if declare -F assert_contains &>/dev/null && \
-   declare -F assert_not_contains &>/dev/null && \
-   declare -F assert_empty &>/dev/null && \
-   declare -F section &>/dev/null && \
-   declare -F print_test_summary &>/dev/null; then
+if declare -F bach::assert::contains &>/dev/null && \
+   declare -F bach::assert::not_contains &>/dev/null && \
+   declare -F bach::assert::empty &>/dev/null && \
+   declare -F bach::assert::section &>/dev/null && \
+   declare -F bach::assert::print_test_summary &>/dev/null; then
     return 0
 fi
 
@@ -70,7 +70,7 @@ fi
 # Returns:
 #   0 if output contains expected string, 1 otherwise
 ################################################################################
-assert_contains() {
+bach::assert::contains() {
     local output="$1"
     local expected="$2"
     local test_name="$3"
@@ -89,7 +89,7 @@ assert_contains() {
         return 1
     fi
 }
-export -f assert_contains
+export -f bach::assert::contains
 
 ################################################################################
 # Assert that output does not contain unexpected string
@@ -104,7 +104,7 @@ export -f assert_contains
 # Returns:
 #   0 if output does not contain unexpected string, 1 otherwise
 ################################################################################
-assert_not_contains() {
+bach::assert::not_contains() {
     local output="$1"
     local unexpected="$2"
     local test_name="$3"
@@ -123,7 +123,7 @@ assert_not_contains() {
         return 1
     fi
 }
-export -f assert_not_contains
+export -f bach::assert::not_contains
 
 ################################################################################
 # Assert that output is empty
@@ -137,7 +137,7 @@ export -f assert_not_contains
 # Returns:
 #   0 if output is empty, 1 otherwise
 ################################################################################
-assert_empty() {
+bach::assert::empty() {
     local output="$1"
     local test_name="$2"
 
@@ -155,7 +155,7 @@ assert_empty() {
         return 1
     fi
 }
-export -f assert_empty
+export -f bach::assert::empty
 
 ################################################################################
 # Print test section header
@@ -167,11 +167,11 @@ export -f assert_empty
 # Returns:
 #   0 always
 ################################################################################
-section() {
+bach::assert::section() {
     printf '\n'
     printf '%b\n' "${BLUE}━━━ $1 ━━━${RESET}"
 }
-export -f section
+export -f bach::assert::section
 
 ################################################################################
 # Print test summary
@@ -186,7 +186,7 @@ export -f section
 # Returns:
 #   0 if all tests passed, non-zero if any tests failed
 ################################################################################
-print_test_summary() {
+bach::assert::print_test_summary() {
     printf '\n'
     printf '%b\n' "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     printf '%b\n' "${BLUE}Test Summary${RESET}"
@@ -202,4 +202,4 @@ print_test_summary() {
         printf '%b\n' "\n${RED}Some tests failed! ✗${RESET}\n"
     fi
 }
-export -f print_test_summary
+export -f bach::assert::print_test_summary

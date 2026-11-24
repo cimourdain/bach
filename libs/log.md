@@ -15,12 +15,308 @@ The log library provides a flexible logging system with multiple log levels, env
 - ✅ Level-based priority system
 - ✅ Output to stderr by default
 
-## Installation
+## Usage Examples
 
-```bash
-# Source the logging library
-source log.sh
+### Simple Logging
+
+::: code-group
+
+```bash [With bach]
+#!/bin/bash
+source lib/bach/bach.sh
+# Log at different levels
+export LOG_LEVEL="info"                           # Display messages from info level
+bach log "Application started"                    # Default: info level
+bach log --info "Processing user request"
+bach log --warning "Cache is full"
+bach log --error "Failed to connect to database"
+bach log --fatal "Critical system failure"
 ```
+
+```bash [Standalone]
+#!/bin/bash
+source my-libs/log.sh
+# Log at different levels
+export LOG_LEVEL="info"                           # Display messages from info level
+bach::log "Application started"                    # Default: info level
+bach::log --info "Processing user request"
+bach::log --warning "Cache is full"
+bach::log --error "Failed to connect to database"
+bach::log --fatal "Critical system failure"
+```
+
+:::
+
+::: details Expected output
+
+<pre class="ansi" v-pre><span class="c-green">[2026-01-01 12:00:00][INFO][/home/user/project/my_script.sh:6 main]Application started</span>
+<span class="c-green">[2026-01-01 12:00:00][INFO][/home/user/project/my_script.sh:7 main]Processing user request</span>
+<span class="c-yellow">[2026-01-01 12:00:00][WARNING][/home/user/project/my_script.sh:8 main]Cache is full</span>
+<span class="c-red">[2026-01-01 12:00:00][ERROR][/home/user/project/my_script.sh:9 main]Failed to connect to database</span>
+<span class="c-red"></span><span class="c-red bold">[2026-01-01 12:00:00][FATAL][/home/user/project/my_script.sh:10 main]Critical system failure</span></pre>
+
+:::
+
+### Log Levels
+
+Only messages whose level is at least the execution log level are displayed. The execution log level is defined by the [`LOG_LEVEL` environment variable](#log-level). Log levels can be given with long (`--debug`) or short (`-d`) options.
+
+::: code-group
+
+```bash [With bach]
+#!/bin/bash
+source lib/bach/bach.sh
+log_all_levels() {
+    bach log --verbose "Verbose message"
+    bach log -t "Trace message"
+    bach log --debug "Debug message"
+    bach log -i "Info message"
+    bach log --warning "Warning message"
+    bach log -e "Error message"
+    bach log -f "Fatal message"
+}
+
+# Only messages from warning level are displayed
+export LOG_LEVEL="warning"
+echo "The following logs use the warning log level"
+log_all_levels
+
+# Messages from debug level are displayed
+export LOG_LEVEL="debug"
+echo "The following logs use the debug log level"
+log_all_levels
+```
+
+```bash [Standalone]
+#!/bin/bash
+source my-libs/log.sh
+log_all_levels() {
+    bach::log --verbose "Verbose message"
+    bach::log -t "Trace message"
+    bach::log --debug "Debug message"
+    bach::log -i "Info message"
+    bach::log --warning "Warning message"
+    bach::log -e "Error message"
+    bach::log -f "Fatal message"
+}
+
+# Only messages from warning level are displayed
+export LOG_LEVEL="warning"
+echo "The following logs use the warning log level"
+log_all_levels
+
+# Messages from debug level are displayed
+export LOG_LEVEL="debug"
+echo "The following logs use the debug log level"
+log_all_levels
+```
+
+:::
+
+::: details Expected output
+
+<pre class="ansi" v-pre>The following logs use the warning log level
+<span class="c-yellow">[2026-01-01 12:00:00][WARNING][/home/user/project/my_script.sh:9 log_all_levels]Warning message</span>
+<span class="c-red">[2026-01-01 12:00:00][ERROR][/home/user/project/my_script.sh:10 log_all_levels]Error message</span>
+<span class="c-red"></span><span class="c-red bold">[2026-01-01 12:00:00][FATAL][/home/user/project/my_script.sh:11 log_all_levels]Fatal message</span>
+The following logs use the debug log level
+<span class="c-blue">[2026-01-01 12:00:00][DEBUG][/home/user/project/my_script.sh:7 log_all_levels]Debug message</span>
+<span class="c-green">[2026-01-01 12:00:00][INFO][/home/user/project/my_script.sh:8 log_all_levels]Info message</span>
+<span class="c-yellow">[2026-01-01 12:00:00][WARNING][/home/user/project/my_script.sh:9 log_all_levels]Warning message</span>
+<span class="c-red">[2026-01-01 12:00:00][ERROR][/home/user/project/my_script.sh:10 log_all_levels]Error message</span>
+<span class="c-red"></span><span class="c-red bold">[2026-01-01 12:00:00][FATAL][/home/user/project/my_script.sh:11 log_all_levels]Fatal message</span></pre>
+
+:::
+
+### Logging to a File
+
+Logs are written on stderr. Redirect stderr to route the logs to a file.
+
+::: code-group
+
+```bash [With bach]
+#!/bin/bash
+source lib/bach/bach.sh
+LOG_FILE="app.log"
+export LOG_LEVEL="info"
+
+# Logs are written on stderr: redirect it to append them to a file
+{
+    bach log --info "Application started"
+    bach log --warning "Cache is full"
+    bach log --error "Failed to connect to database"
+} 2>> "$LOG_FILE"
+
+echo "Content of $LOG_FILE:"
+cat "$LOG_FILE"
+```
+
+```bash [Standalone]
+#!/bin/bash
+source my-libs/log.sh
+LOG_FILE="app.log"
+export LOG_LEVEL="info"
+
+# Logs are written on stderr: redirect it to append them to a file
+{
+    bach::log --info "Application started"
+    bach::log --warning "Cache is full"
+    bach::log --error "Failed to connect to database"
+} 2>> "$LOG_FILE"
+
+echo "Content of $LOG_FILE:"
+cat "$LOG_FILE"
+```
+
+:::
+
+::: details Expected output
+
+<pre class="ansi" v-pre>Content of app.log:
+<span class="c-green">[2026-01-01 12:00:00][INFO][/home/user/project/my_script.sh:9 main]Application started</span>
+<span class="c-yellow">[2026-01-01 12:00:00][WARNING][/home/user/project/my_script.sh:10 main]Cache is full</span>
+<span class="c-red">[2026-01-01 12:00:00][ERROR][/home/user/project/my_script.sh:11 main]Failed to connect to database</span></pre>
+
+:::
+
+### Error Handling with Logging
+
+This example wraps command execution in a `safe_operation` function so that the logs tell the whole story of a command: a debug log before running it, an info log when it succeeds, and an error log when it fails. The command output is captured instead of being printed, so that the error message raised by the failing command is part of the error log. The script log level is set to `debug` to display every step.
+
+::: code-group
+
+```bash [With bach]
+#!/bin/bash
+source lib/bach/bach.sh
+export LOG_LEVEL="debug"
+
+# Run a command, log its progress and, on failure, its error message
+function safe_operation() {
+    local operation="$1"
+
+    bach log --debug "Attempting operation: $operation"
+
+    # Capture the command output (stdout and stderr) instead of printing it
+    local operation_output
+    if operation_output=$(eval "$operation" 2>&1); then
+        bach log --info "Operation succeeded: $operation"
+        return 0
+    else
+        local exit_code=$?
+        bach log --error "Operation failed with code $exit_code: $operation ($operation_output)"
+        return $exit_code
+    fi
+}
+
+# Examples
+safe_operation "mkdir -p /tmp/test_dir"
+safe_operation "touch /tmp/test_dir/file.txt"
+safe_operation "cat /nonexistent/file.txt"  # This will fail and log the error
+```
+
+```bash [Standalone]
+#!/bin/bash
+source my-libs/log.sh
+export LOG_LEVEL="debug"
+
+# Run a command, log its progress and, on failure, its error message
+function safe_operation() {
+    local operation="$1"
+
+    bach::log --debug "Attempting operation: $operation"
+
+    # Capture the command output (stdout and stderr) instead of printing it
+    local operation_output
+    if operation_output=$(eval "$operation" 2>&1); then
+        bach::log --info "Operation succeeded: $operation"
+        return 0
+    else
+        local exit_code=$?
+        bach::log --error "Operation failed with code $exit_code: $operation ($operation_output)"
+        return $exit_code
+    fi
+}
+
+# Examples
+safe_operation "mkdir -p /tmp/test_dir"
+safe_operation "touch /tmp/test_dir/file.txt"
+safe_operation "cat /nonexistent/file.txt"  # This will fail and log the error
+```
+
+:::
+
+::: details Expected output
+
+<pre class="ansi" v-pre><span class="c-blue">[2026-01-01 12:00:00][DEBUG][/home/user/project/my_script.sh:10 safe_operation]Attempting operation: mkdir -p /tmp/test_dir</span>
+<span class="c-green">[2026-01-01 12:00:00][INFO][/home/user/project/my_script.sh:15 safe_operation]Operation succeeded: mkdir -p /tmp/test_dir</span>
+<span class="c-blue">[2026-01-01 12:00:00][DEBUG][/home/user/project/my_script.sh:10 safe_operation]Attempting operation: touch /tmp/test_dir/file.txt</span>
+<span class="c-green">[2026-01-01 12:00:00][INFO][/home/user/project/my_script.sh:15 safe_operation]Operation succeeded: touch /tmp/test_dir/file.txt</span>
+<span class="c-blue">[2026-01-01 12:00:00][DEBUG][/home/user/project/my_script.sh:10 safe_operation]Attempting operation: cat /nonexistent/file.txt</span>
+<span class="c-red">[2026-01-01 12:00:00][ERROR][/home/user/project/my_script.sh:19 safe_operation]Operation failed with code 1: cat /nonexistent/file.txt (cat: /nonexistent/file.txt: No such file or directory)</span></pre>
+
+:::
+
+### Integration with Error Trapping
+
+This example uses the logs as the reporting channel of bash traps, so that a script never fails silently:
+
+- the `ERR` trap logs a `fatal` message with the line number and the failing command, then exits;
+- the `INT` trap logs a `warning` when the user interrupts the script (Ctrl+C);
+- the `EXIT` trap runs a `cleanup` function that logs the cleanup, whatever the way the script ends.
+
+Here the final `false` command fails on purpose to trigger the `ERR` trap.
+
+::: code-group
+
+```bash [With bach]
+#!/bin/bash
+source lib/bach/bach.sh
+# Set up error trapping
+set -euo pipefail
+
+trap 'bach log --fatal "Script failed at line $LINENO: $BASH_COMMAND"; exit 1' ERR
+trap 'bach log --warning "Script interrupted by user"; exit 130' INT
+
+function cleanup() {
+    bach log --info "Performing cleanup"
+    # Cleanup code here
+}
+
+trap cleanup EXIT
+
+# Main script
+bach log --info "Starting critical operation"
+bach log --debug "Working directory: $PWD"
+
+# Your code here
+false  # This will trigger ERR trap
+```
+
+```bash [Standalone]
+#!/bin/bash
+source my-libs/log.sh
+# Set up error trapping
+set -euo pipefail
+
+trap 'bach::log --fatal "Script failed at line $LINENO: $BASH_COMMAND"; exit 1' ERR
+trap 'bach::log --warning "Script interrupted by user"; exit 130' INT
+
+function cleanup() {
+    bach::log --info "Performing cleanup"
+    # Cleanup code here
+}
+
+trap cleanup EXIT
+
+# Main script
+bach::log --info "Starting critical operation"
+bach::log --debug "Working directory: $PWD"
+
+# Your code here
+false  # This will trigger ERR trap
+```
+
+:::
 
 ## API Reference
 
@@ -49,333 +345,6 @@ bach::log [options] "<message>"
 - `LOG_LEVEL` - Minimum log level to display (verbose|trace|debug|info|warning|error|fatal)
 
 **Output:** Writes to stderr in format: `[YYYY-MM-DD HH:MM:SS] LEVEL message`
-
-## Basic Examples
-
-### Simple Logging
-
-```bash
-#!/bin/bash
-source log.sh
-
-# Log at different levels
-bach::log "Application started"                    # Default: info level
-bach::log --info "Processing user request"
-bach::log --warning "Cache is full"
-bach::log --error "Failed to connect to database"
-bach::log --fatal "Critical system failure"
-```
-
-**Output:**
-```
-[2026-02-23 14:30:15] INFO    Application started
-[2026-02-23 14:30:15] INFO    Processing user request
-[2026-02-23 14:30:15] WARNING Cache is full
-[2026-02-23 14:30:15] ERROR   Failed to connect to database
-[2026-02-23 14:30:15] FATAL   Critical system failure
-```
-
-### Debug and Trace Logging
-
-```bash
-#!/bin/bash
-source log.sh
-
-function process_file() {
-    local filename="$1"
-
-    bach::log --debug "Entering process_file with: $filename"
-    bach::log --trace "Opening file descriptor"
-
-    if [[ -f "$filename" ]]; then
-        bach::log --info "Processing file: $filename"
-        local line_count=$(wc -l < "$filename")
-        bach::log --debug "File has $line_count lines"
-    else
-        bach::log --error "File not found: $filename"
-        return 1
-    fi
-
-    bach::log --trace "Exiting process_file"
-}
-
-process_file "data.txt"
-```
-
-### Using Short Flags
-
-```bash
-#!/bin/bash
-source log.sh
-
-# Short flag versions
-bach::log -v "Verbose message"      # Verbose
-bach::log -t "Trace message"        # Trace
-bach::log -d "Debug message"        # Debug
-bach::log -i "Info message"         # Info
-bach::log -w "Warning message"      # Warning
-bach::log -e "Error message"        # Error
-bach::log -f "Fatal message"        # Fatal
-```
-
-## Advanced Examples
-
-### Log Level Filtering
-
-```bash
-#!/bin/bash
-source log.sh
-
-# Set minimum log level to warning (suppress info, debug, trace, verbose)
-export LOG_LEVEL="warning"
-
-bach::log --verbose "This won't be shown"
-bach::log --trace "This won't be shown"
-bach::log --debug "This won't be shown"
-bach::log --info "This won't be shown"
-bach::log --warning "This WILL be shown"
-bach::log --error "This WILL be shown"
-bach::log --fatal "This WILL be shown"
-```
-
-**Output:**
-```
-[2026-02-23 14:30:15] WARNING This WILL be shown
-[2026-02-23 14:30:15] ERROR   This WILL be shown
-[2026-02-23 14:30:15] FATAL   This WILL be shown
-```
-
-### Application with Multiple Log Levels
-
-```bash
-#!/bin/bash
-source log.sh
-
-# Set log level from command line argument
-LOG_LEVEL="${1:-info}"
-export LOG_LEVEL
-
-function initialize() {
-    bach::log --verbose "Loading configuration files"
-    bach::log --debug "Config directory: /etc/myapp"
-    bach::log --info "Application initialized"
-}
-
-function connect_database() {
-    bach::log --trace "Attempting database connection"
-    bach::log --debug "Connection string: localhost:5432"
-
-    if ! ping -c 1 localhost &>/dev/null; then
-        bach::log --error "Database server unreachable"
-        return 1
-    fi
-
-    bach::log --info "Connected to database"
-    return 0
-}
-
-function process_data() {
-    bach::log --verbose "Starting data processing pipeline"
-
-    local start_time=$(date +%s)
-    bach::log --debug "Start time: $start_time"
-
-    # Process data...
-    sleep 2
-
-    local end_time=$(date +%s)
-    local duration=$((end_time - start_time))
-    bach::log --info "Data processing completed in ${duration}s"
-}
-
-# Main execution
-initialize
-if connect_database; then
-    process_data
-else
-    bach::log --fatal "Cannot proceed without database connection"
-    exit 1
-fi
-```
-
-**Usage:**
-```bash
-# Run with info level (default)
-./app.sh
-
-# Run with debug level
-./app.sh debug
-
-# Run with warning level (only warnings and above)
-./app.sh warning
-```
-
-### Error Handling with Logging
-
-```bash
-#!/bin/bash
-source log.sh
-
-function safe_operation() {
-    local operation="$1"
-
-    bach::log --debug "Attempting operation: $operation"
-
-    if eval "$operation" 2>&1; then
-        bach::log --info "Operation succeeded: $operation"
-        return 0
-    else
-        local exit_code=$?
-        bach::log --error "Operation failed with code $exit_code: $operation"
-        return $exit_code
-    fi
-}
-
-# Examples
-safe_operation "mkdir -p /tmp/test_dir"
-safe_operation "touch /tmp/test_dir/file.txt"
-safe_operation "cat /nonexistent/file.txt"  # This will fail and log error
-```
-
-### Long-Running Process with Progress Logging
-
-```bash
-#!/bin/bash
-source log.sh
-
-export LOG_LEVEL="info"
-
-function process_items() {
-    local -a items=("item1" "item2" "item3" "item4" "item5")
-    local total=${#items[@]}
-
-    bach::log --info "Starting batch processing of $total items"
-
-    for i in "${!items[@]}"; do
-        local item="${items[$i]}"
-        local progress=$((i + 1))
-
-        bach::log --debug "Processing item $progress/$total: $item"
-
-        # Simulate processing
-        sleep 1
-
-        if [[ $((RANDOM % 10)) -gt 8 ]]; then
-            bach::log --warning "Item $item took longer than expected"
-        fi
-
-        bach::log --verbose "Completed item $progress/$total"
-    done
-
-    bach::log --info "Batch processing completed: $total items processed"
-}
-
-process_items
-```
-
-### Structured Logging for Scripts
-
-```bash
-#!/bin/bash
-source log.sh
-
-# Function to log script sections
-function log_section() {
-    local section="$1"
-    bach::log --info "========== $section =========="
-}
-
-function log_step() {
-    local step="$1"
-    bach::log --debug "→ $step"
-}
-
-# Main script
-log_section "Pre-flight Checks"
-log_step "Checking disk space"
-bach::log --verbose "Available space: $(df -h / | awk 'NR==2 {print $4}')"
-
-log_step "Checking dependencies"
-for cmd in curl jq git; do
-    if command -v "$cmd" &>/dev/null; then
-        bach::log --debug "Found: $cmd"
-    else
-        bach::log --error "Missing dependency: $cmd"
-    fi
-done
-
-log_section "Main Processing"
-log_step "Downloading data"
-bach::log --info "Fetching from remote server"
-
-log_step "Validating data"
-bach::log --debug "Running validation checks"
-
-log_section "Cleanup"
-log_step "Removing temporary files"
-bach::log --verbose "Cleanup completed"
-
-bach::log --info "Script execution completed successfully"
-```
-
-### Integration with Error Trapping
-
-```bash
-#!/bin/bash
-source log.sh
-
-# Set up error trapping
-set -euo pipefail
-
-trap 'bach::log --fatal "Script failed at line $LINENO: $BASH_COMMAND"; exit 1' ERR
-trap 'bach::log --warning "Script interrupted by user"; exit 130' INT
-
-function cleanup() {
-    bach::log --info "Performing cleanup"
-    # Cleanup code here
-}
-
-trap cleanup EXIT
-
-# Main script
-bach::log --info "Starting critical operation"
-bach::log --debug "Working directory: $PWD"
-
-# Your code here
-false  # This will trigger ERR trap
-```
-
-### Dynamic Log Level Control
-
-```bash
-#!/bin/bash
-source log.sh
-
-function set_log_level() {
-    local level="$1"
-    export LOG_LEVEL="$level"
-    bach::log --info "Log level changed to: $level"
-}
-
-# Start with info level
-export LOG_LEVEL="info"
-
-bach::log --debug "This won't show initially"
-bach::log --info "Application started"
-
-# Switch to debug for troubleshooting
-set_log_level "debug"
-bach::log --debug "Now debug messages are visible"
-bach::log --trace "But trace is still hidden"
-
-# Switch to trace for detailed debugging
-set_log_level "trace"
-bach::log --trace "Trace messages now visible"
-
-# Back to info for normal operation
-set_log_level "info"
-bach::log --debug "Debug hidden again"
-```
 
 ## Log Level Priority
 
@@ -439,6 +408,11 @@ Valid values (case-insensitive):
 - `warning`
 - `error`
 - `fatal`
+
+## Roadmap
+
+- [ ] Handle multiple loggers with distinct configurations (distinct `__BACH_LOG_CONFIG`)
+- [ ] Handle logging to a file (without color formatting)
 
 ## See Also
 

@@ -1,0 +1,1 @@
+/home/gabriel/dev/bach/libs/log.sh

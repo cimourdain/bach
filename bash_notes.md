@@ -137,6 +137,19 @@ done
 my_array=( "value1" "value2" "value3" )
 ```
 
+## Get items
+```bash
+my_array=( "value1" "value2" "value3" )
+echo "${my_array[0]}" # "value1"
+
+# Last item
+## bash >4.1
+echo "${my_array[-1]}" # "value3"
+# older
+echo "${my_array[${#my_array[@]}-1]}" # "value3"
+
+```
+
 ## Checks
 ### Check array is not empty
 ```bash
@@ -187,14 +200,23 @@ echo "${C[@]: -2:2}"  # a  b c 42 # The space before the - is necesssary
 ```bash
 delimiter=","
 my_string="toto,titi,tata"
-IFS="${delimiter}" read -a my_array <<< "$my_string"
+
+# with mapfile
+mapfile -td"$delimiter" my_array < <(printf '%s%s' "$my_string" "$delimiter")
+
+# with read
+# IFS="${delimiter}" read -a my_array <<< "$my_string"
 ```
 
 ### Array to string conversion
 ```bash
 delimiter=","
 my_array=( "value1" "value2" "value3" )
-my_str="$(IFS="${delimiter}"; echo "${!my_array[*]}")"
+
+printf -v my_str '%s' "${my_array[@]/#/$delimiter}"; my_str="${my_str#$delimiter}"
+
+# impacting IFS in a subshell
+# my_str="$(IFS="${delimiter}"; echo "${!my_array[*]}")"
 ```
 
 # Associative arrays

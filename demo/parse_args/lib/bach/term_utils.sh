@@ -1,0 +1,1 @@
+/home/gabriel/dev/bach/libs/term_utils.sh

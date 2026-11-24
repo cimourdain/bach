@@ -29,6 +29,14 @@ if [ -z "${__BACH_LIBS_REPO_CUSTOM_PATH}" ]; then
     )
 fi
 
+bach::setup() {
+    echo "BACH Framework - Setup: Initializing configuration." >&2
+    echo "BACH Framework - Setup: TODO Init environment variables if not set" >&2
+    # __BACH_CONFIG
+    # __BACH_LIBS_LOCAL_CUSTOM_PATH
+    # __BACH_LIBS_REPO_CUSTOM_PATH
+}
+
 bach::__private::log() {
     # Log level priorities (lower number = lower priority)
     local -A log_levels_indexes=(
@@ -206,8 +214,17 @@ bach::__private::source_lib() {
             local lib_path_in_repo
             lib_path_in_repo="$(bach::__private::get_lib_path_in_current_repo "$bach_lib_name")"
             local lib_full_path_in_repo="${repo_base_path}/${lib_path_in_repo}"
-            # echo "Source lib ${bach_lib_name}: Create a symlink from ${lib_full_path_in_repo} to ${bach_local_lib_dir_path}." >&2
-            ln -s "${lib_full_path_in_repo}" "${bach_local_lib_dir_path}"
+
+            # Create or update the symlink for the local library path
+            if [[ ! -e "${bach_local_lib_dir_path}" && ! -L "${bach_local_lib_dir_path}" ]]; then
+                # echo "Source lib ${bach_lib_name}: Create a symlink from ${lib_full_path_in_repo} to ${bach_local_lib_dir_path}." >&2
+                ln -s "${lib_full_path_in_repo}" "${bach_local_lib_dir_path}"
+            elif [[ "$(readlink -f -- "${bach_local_lib_dir_path}")" != "${lib_full_path_in_repo}" ]]; then
+                # echo "Source lib ${bach_lib_name}: Replace stale ${bach_local_lib_dir_path} with a symlink to ${lib_full_path_in_repo}." >&2
+                rm -f "${bach_local_lib_dir_path}"
+                ln -s "${lib_full_path_in_repo}" "${bach_local_lib_dir_path}"
+            fi
+            # echo "Source lib ${bach_lib_name}: Using local library path ${bach_local_lib_dir_path}." >&2
             source "${bach_local_lib_dir_path}"
         else
             lib_download_url="$(bach::__private::build_lib_download_url "${bach_lib_name}")"
@@ -224,16 +241,9 @@ bach::__private::source_lib() {
     fi
 }
 
-bach::__private::setup() {
-    if [ ! "$(type -t "bach::log")" = "function" ]; then
-        # echo "Setup: Log function not declared, source log library to declare it." >&2
-        bach::__private::source_lib "log"
-    fi
-}
+
 
 bach() {
-    bach::__private::setup
-
     local current_script_path
     current_script_path="$(readlink -f -- "${BASH_SOURCE[0]}")"
     # echo "enter main bach function from $current_script_path upon call by ${BASH_SOURCE[1]}" >&2

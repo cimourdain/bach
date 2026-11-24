@@ -1,0 +1,41 @@
+/* Terminal output rendered from ANSI escape codes (<pre class="ansi">) */
+:root {
+  --ansi-bg: #f6f6f7;
+  --ansi-fg: #3c3c43;
+  --ansi-red: #c0392b;
+  --ansi-green: #1e8449;
+  --ansi-yellow: #9a6700;
+  --ansi-blue: #1f6feb;
+  --ansi-magenta: #a626a4;
+  --ansi-cyan: #0b7285;
+}
+.dark {
+  --ansi-bg: #1e1e20;
+  --ansi-fg: #dfdfd6;
+  --ansi-red: #ff6b6b;
+  --ansi-green: #51cf66;
+  --ansi-yellow: #ffd43b;
+  --ansi-blue: #74a7ff;
+  --ansi-magenta: #e599f7;
+  --ansi-cyan: #66d9e8;
+}
+pre.ansi {
+  background: var(--ansi-bg);
+  color: var(--ansi-fg);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0;
+  overflow-x: auto;
+  font-family: var(--vp-font-family-mono);
+  font-size: var(--vp-code-font-size);
+  line-height: 1.7;
+}
+.ansi .c-red { color: var(--ansi-red); }
+.ansi .c-green { color: var(--ansi-green); }
+.ansi .c-yellow { color: var(--ansi-yellow); }
+.ansi .c-blue { color: var(--ansi-blue); }
+.ansi .c-magenta { color: var(--ansi-magenta); }
+.ansi .c-cyan { color: var(--ansi-cyan); }
+.ansi .bold { font-weight: 700; }
+.ansi .dim { opacity: 0.6; }
+.ansi .cmd { color: var(--ansi-cyan); font-weight: 700; }
