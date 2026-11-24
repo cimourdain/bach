@@ -25,6 +25,8 @@ const sidebar = libs
 const rewrites: Record<string, string> = {
   'README.md': 'index.md',
   'docs/libraries.md': 'libraries.md',
+  'docs/contributing/usage.md': 'contributing/usage.md',
+  'docs/contributing/conventions.md': 'contributing/conventions.md',
 }
 for (const { name } of libs) {
   rewrites[`libs/${name}.md`] = `libraries/${name}.md`
@@ -50,8 +52,20 @@ export default defineConfig({
     nav: [
       { text: 'Bach', link: '/' },
       { text: 'Libraries', link: '/libraries', activeMatch: '/libraries' },
+      { text: 'Contributing', link: '/contributing/usage', activeMatch: '/contributing' },
     ],
-    sidebar: { '/libraries': [{ text: 'Libraries', link: '/libraries', items: sidebar }] },
+    sidebar: {
+      '/libraries': [{ text: 'Libraries', link: '/libraries', items: sidebar }],
+      '/contributing': [
+        {
+          text: 'Contributing',
+          items: [
+            { text: 'Usage', link: '/contributing/usage' },
+            { text: 'Conventions', link: '/contributing/conventions' },
+          ],
+        },
+      ],
+    },
     socialLinks: [{ icon: 'github', link: 'https://github.com/cimourdain/bach' }],
     search: { provider: 'local' },
     outline: { level: [2, 3] },
