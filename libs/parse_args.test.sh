@@ -138,6 +138,236 @@ test_parsed_args_var_name() {
     bach::parse_args::config::set_parsed_args_global_var_name "__BACH_PARSED_ARGS"
 }
 
+# docopt example from http://docopt.org
+FROM_SPEC_SAMPLE='Naval Fate.
+
+Usage:
+  naval_fate ship new <name>...
+  naval_fate ship <name> move <x> <y> [--speed=<kn>]
+  naval_fate ship shoot <x> <y>
+  naval_fate mine (set|remove) <x> <y> [--moored|--drifting]
+  naval_fate -h | --help
+  naval_fate --version
+
+Options:
+  -h --help     Show this screen.
+  --version     Show version.
+  --speed=<kn>  Speed in knots [default: 10].
+  --moored      Moored (anchored) mine.
+  --drifting    Drifting mine.
+'
+
+# Get one key of the result of a parsed specification
+test_get_key() {
+    local -n parsed_options_ref="${__BACH_PARSED_ARGS[options]}"
+    echo "${parsed_options_ref[$1]}"
+}
+
+# Run from_spec on the sample specification, hiding the error logs
+test_from_spec_sample() {
+    bach::parse_args::from_spec "$FROM_SPEC_SAMPLE" "$@" 2>/dev/null
+}
+
+test_from_spec_commands_and_arguments() {
+    bach::assert::section "Test from_spec: commands, arguments and repetition"
+    test_from_spec_sample ship new Guardian Voyager
+    bach::assert::contains "$?" "0" "Valid arguments are accepted"
+    bach::assert::contains "$(test_get_key ship)" "true" "Matched command"
+    bach::assert::contains "$(test_get_key new)" "true" "Matched sub command"
+    bach::assert::contains "$(test_get_key move)" "false" "Command of another usage pattern"
+    bach::assert::contains "$(test_get_key "<name>")" "Guardian Voyager" "Repeated argument"
+    bach::assert::contains "$(test_get_key "<name>,#")" "2" "Repeated argument count"
+    bach::assert::contains "$(test_get_key "<name>,1")" "Voyager" "Repeated argument item"
+
+    test_from_spec_sample ship Guardian move 10 50 --speed=20
+    bach::assert::contains "$?" "0" "Another usage pattern is matched"
+    bach::assert::contains "$(test_get_key "<name>")" "Guardian" "Argument"
+    bach::assert::contains "$(test_get_key "<x>")" "10" "First argument"
+    bach::assert::contains "$(test_get_key "<y>")" "50" "Second argument"
+    bach::assert::contains "$(test_get_key speed)" "20" "Option with argument"
+    bach::assert::contains "$(test_get_key new)" "false" "Command not matched"
+}
+
+test_from_spec_options() {
+    bach::assert::section "Test from_spec: options"
+    test_from_spec_sample ship Guardian move 1 2
+    bach::assert::contains "$(test_get_key speed)" "10" "Default value of an option"
+    test_from_spec_sample mine set 1 2 --moored
+    bach::assert::contains "$?" "0" "Group with mutually exclusive options"
+    bach::assert::contains "$(test_get_key moored)" "true" "Flag provided"
+    bach::assert::contains "$(test_get_key drifting)" "false" "Flag not provided"
+    bach::assert::contains "$(test_get_key set)" "true" "Command of (set|remove)"
+}
+
+test_from_spec_failures() {
+    bach::assert::section "Test from_spec: arguments not matching the usage"
+    test_from_spec_sample
+    bach::assert::contains "$?" "1" "Fails without arguments"
+    test_from_spec_sample ship
+    bach::assert::contains "$?" "1" "Fails when arguments are missing"
+    test_from_spec_sample mine set 1 2 --moored --drifting
+    bach::assert::contains "$?" "1" "Fails with mutually exclusive options"
+    test_from_spec_sample mine explode 1 2
+    bach::assert::contains "$?" "1" "Fails with an unknown command"
+    test_from_spec_sample ship shoot 1 2 --unknown
+    bach::assert::contains "$?" "1" "Fails with an unknown option"
+    test_from_spec_sample ship shoot 1 2 3
+    bach::assert::contains "$?" "1" "Fails with too many arguments"
+    bach::assert::contains "$(test_get_key ship)" "" "Parsed arguments are empty after a failure"
+}
+
+test_from_spec_shortcut_and_stacked_flags() {
+    bach::assert::section "Test from_spec: [options], stacked flags, repeatable"
+    local doc='Usage: prog [options] [-x] [--] FILE...
+
+Options:
+  -a, --all   List everything.
+  -b          Short only.
+  -c          Short only too.
+  --out=<f>   Output [default: x.txt]
+  -x          Extra.'
+    bach::parse_args::from_spec "$doc" -abc one.txt two.txt 2>/dev/null
+    bach::assert::contains "$?" "0" "Valid arguments are accepted"
+    bach::assert::contains "$(test_get_key all)" "true" "Stacked flag, long name"
+    bach::assert::contains "$(test_get_key b)" "true" "Stacked flag without long syntax"
+    bach::assert::contains "$(test_get_key c)" "true" "Stacked flag without long syntax (2)"
+    bach::assert::contains "$(test_get_key x)" "false" "Flag not provided"
+    bach::assert::contains "$(test_get_key out)" "x.txt" "[options] shortcut: default value"
+    bach::assert::contains "$(test_get_key FILE)" "one.txt two.txt" "UPPER-CASE argument"
+    bach::parse_args::from_spec "$doc" --out=o.txt file 2>/dev/null
+    bach::assert::contains "$(test_get_key out)" "o.txt" "[options] shortcut: value"
+}
+
+test_from_spec_file() {
+    bach::assert::section "Test from_spec: specification from a file"
+    local spec_file
+    spec_file="$(mktemp)"
+    printf 'usage: prog [-q] <name>\n' > "$spec_file"
+    bach::parse_args::from_spec "$spec_file" -q bob
+    bach::assert::contains "$?" "0" "Specification file is read"
+    bach::assert::contains "$(test_get_key q)" "true" "Flag from file"
+    bach::assert::contains "$(test_get_key "<name>")" "bob" "Argument from file"
+    bach::assert::contains "$(test_get_rest)" "bob" "Rest holds the positionals"
+    rm -f "$spec_file"
+}
+
+test_from_spec_invalid_spec() {
+    bach::assert::section "Test from_spec: invalid specifications"
+    bach::parse_args::from_spec "No usage here" a 2>/dev/null
+    bach::assert::contains "$?" "1" "A specification needs a Usage section"
+    bach::parse_args::from_spec "Usage: prog [a" a 2>/dev/null
+    bach::assert::contains "$?" "1" "Unbalanced bracket"
+    bach::parse_args::from_spec "Usage: prog (a" a 2>/dev/null
+    bach::assert::contains "$?" "1" "Unbalanced parenthesis"
+    bach::parse_args::from_spec "Usage: prog a)" a 2>/dev/null
+    bach::assert::contains "$?" "1" "Unexpected closing parenthesis"
+    bach::parse_args::from_spec "$(printf 'Usage: prog [options]\n\nOptions:\n  -o FILE  Output\n')" 2>/dev/null
+    bach::assert::contains "$?" "1" "An option with an argument needs a long syntax"
+}
+
+test_debug_parsed() {
+    bach::assert::section "Test debug_parsed"
+    bach::parse_args --verbose --output=json file.txt
+    local output
+    output="$(bach::parse_args::debug_parsed)"
+    bach::assert::contains "$output" '"output": "json"' "Default format is json"
+    bach::assert::contains "$output" '"rest[0]": "file.txt"' "Json contains the rest arguments"
+    output="$(bach::parse_args::debug_parsed --format=markdown)"
+    bach::assert::contains "$output" "| verbose | true |" "Markdown table"
+    output="$(bach::parse_args::debug_parsed --format=ascii)"
+    bach::assert::contains "$output" "| output  | json     |" "Ascii table"
+    output="$(bach::parse_args::debug_parsed --format=yaml 2>/dev/null)"
+    bach::assert::contains "$?" "1" "Unknown format is refused"
+    bach::assert::empty "$output" "Unknown format prints nothing"
+
+    local converter_backup
+    converter_backup="$(declare -f bach::bash_utils::assoc_array::to_json)"
+    unset -f bach::bash_utils::assoc_array::to_json
+    local -A saved_config=([libs_local_path_default]="${__BACH_CONFIG[libs_local_path_default]}")
+    __BACH_CONFIG[libs_local_path_default]="/nonexistent"
+    output="$(bach::parse_args::debug_parsed 2>/dev/null)"
+    bach::assert::contains "$?" "1" "Missing converter function: failure"
+    bach::assert::empty "$output" "Missing converter function: empty string"
+    __BACH_CONFIG[libs_local_path_default]="${saved_config[libs_local_path_default]}"
+    eval "$converter_backup"
+}
+
+test_parse_args_double_dash() {
+    bach::assert::section "Test -- separator"
+    bach::parse_args -a first -- --not-an-option -b "x y"
+    bach::assert::contains "$(test_get_option a)" "true" "Option before --"
+    bach::assert::empty "$(test_get_option not-an-option)" "Option after -- is not parsed"
+    bach::assert::empty "$(test_get_option b)" "Short flag after -- is not parsed"
+    bach::assert::contains "$(test_count_rest)" "4" "Arguments after -- are in the rest"
+    bach::assert::contains "$(test_get_rest)" "first --not-an-option -b x y" "Rest keeps the order, -- is removed"
+    bach::parse_args --
+    bach::assert::contains "$(test_count_rest)" "0" "Lonely -- gives an empty rest"
+    bach::parse_args -- -- a
+    bach::assert::contains "$(test_get_rest)" "-- a" "A second -- is kept in the rest"
+}
+
+test_from_spec_double_dash() {
+    bach::assert::section "Test from_spec: -- separator"
+    local doc='Usage: prog [-x] [--] <file>...'
+    bach::parse_args::from_spec "$doc" -x -- -weird.txt b 2>/dev/null
+    bach::assert::contains "$?" "0" "Arguments after -- are positionals"
+    bach::assert::contains "$(test_get_key "<file>")" "-weird.txt b" "File names starting with -"
+    bach::assert::contains "$(test_get_key --)" "true" "[--] is matched"
+    bach::parse_args::from_spec "$doc" a 2>/dev/null
+    bach::assert::contains "$(test_get_key --)" "false" "[--] not matched without --"
+    bach::parse_args::from_spec 'Usage: prog [-x]' -x -- extra_1 extra_2 2>/dev/null
+    bach::assert::contains "$?" "0" "Arguments after -- are not matched without [--] in the usage"
+    bach::assert::contains "$(test_get_rest)" "extra_1 extra_2" "They are stored in the rest"
+    bach::assert::contains "$(test_get_key x)" "true" "Options before -- are matched"
+}
+
+test_from_spec_help_and_version() {
+    bach::assert::section "Test from_spec: help and version"
+    local doc=$'Usage: prog [-x] <name>\n\nOptions:\n  -x  Extra.\n\nVersion: 1.2.3 '
+    local output status
+    output="$(bach::parse_args::from_spec "$doc" --help 2>&1)"; status=$?
+    bach::assert::contains "$status" "0" "--help exits with 0"
+    bach::assert::contains "$output" "Usage: prog [-x] <name>" "--help prints the specification"
+    output="$(bach::parse_args::from_spec "$doc" -x -h a 2>&1)"; status=$?
+    bach::assert::contains "$output" "Options:" "-h prints the specification even with other arguments"
+    output="$(bach::parse_args::from_spec "$doc" --version 2>&1)"; status=$?
+    bach::assert::contains "$status" "0" "--version exits with 0"
+    bach::assert::contains "$output" "1.2.3" "--version prints the version"
+    output="$(bach::parse_args::from_spec "$doc" -v 2>&1)"
+    bach::assert::contains "$output" "1.2.3" "-v prints the version"
+    output="$(bach::parse_args::from_spec 'Usage: prog <name>' --version 2>&1)"; status=$?
+    bach::assert::contains "$status" "1" "--version without version in the specification exits with 1"
+    bach::assert::contains "$output" "does not state a version" "An error is logged"
+}
+
+test_from_spec_choices() {
+    bach::assert::section "Test from_spec: allowed values"
+    local doc=$'Usage: prog [--color=<c>] <size> <name>\n\nOptions:\n  --color=<c>  Color [choices: red, green] [default: red]\n\nArguments:\n  <size>  Size [choices: S, M, L]\n  NAME    Not in the usage'
+    bach::parse_args::from_spec "$doc" --color=green M bob 2>/dev/null
+    bach::assert::contains "$?" "0" "Allowed values are accepted"
+    bach::assert::contains "$(test_get_key color)" "green" "Allowed option value"
+    bach::assert::contains "$(test_get_key "<size>")" "M" "Allowed argument value"
+    bach::parse_args::from_spec "$doc" --color=blue M bob 2>/dev/null
+    bach::assert::contains "$?" "1" "Option value not allowed"
+    bach::parse_args::from_spec "$doc" XL bob 2>/dev/null
+    bach::assert::contains "$?" "1" "Argument value not allowed"
+    local output
+    output="$(bach::parse_args::from_spec "$doc" XL bob 2>&1)"
+    bach::assert::contains "$output" "Value 'XL' is not allowed for <size> (allowed: S, M, L)" "The error states the allowed values"
+}
+
+test_from_spec_keys() {
+    bach::assert::section "Test from_spec: keys of the result"
+    local doc=$'Usage: prog [-q] [-z] cmd\n\nOptions:\n  -q, --quiet  Quiet.'
+    bach::parse_args::from_spec "$doc" -q -z cmd 2>/dev/null
+    bach::assert::contains "$(test_get_key quiet)" "true" "Short syntax stored under the long name, without dashes"
+    bach::assert::empty "$(test_get_key q)" "No key for the short syntax of a known option"
+    bach::assert::contains "$(test_get_key z)" "true" "Unknown short syntax: short name without dash"
+    bach::assert::contains "$(test_get_key cmd)" "true" "Command"
+    bach::parse_args::from_spec $'Usage: prog [--name] name' name 2>/dev/null
+    bach::assert::contains "$?" "1" "Names giving the same key are refused"
+}
+
 main() {
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -158,6 +388,18 @@ main() {
     test_parse_args_empty
     test_parse_args_reset_between_calls
     test_parsed_args_var_name
+    test_debug_parsed
+    test_from_spec_commands_and_arguments
+    test_from_spec_options
+    test_from_spec_failures
+    test_from_spec_shortcut_and_stacked_flags
+    test_from_spec_file
+    test_from_spec_invalid_spec
+    test_parse_args_double_dash
+    test_from_spec_double_dash
+    test_from_spec_help_and_version
+    test_from_spec_choices
+    test_from_spec_keys
 
     bach::assert::print_test_summary
     exit $?

@@ -15,11 +15,9 @@ The assert library provides functions for writing test assertions in bash script
 - ✅ Section headers for test organization
 - ✅ Summary reports
 
-## Usage
+## Usage Examples
 
-### Basic Examples
-
-#### Simple Test File
+### Simple Test File
 
 ::: code-group
 
@@ -74,7 +72,7 @@ Total tests:  2
 
 :::
 
-#### Testing Command Output
+### Testing Command Output
 
 ::: code-group
 
@@ -129,7 +127,7 @@ Total tests:  2
 
 :::
 
-#### Testing Empty Output
+### Testing Empty Output
 
 ::: code-group
 
@@ -194,9 +192,7 @@ Total tests:  2
 
 :::
 
-### Advanced Examples
-
-#### Multi-Section Test Suite
+### Multi-Section Test Suite
 
 ::: code-group
 
@@ -405,7 +401,7 @@ Total tests:  12
 
 :::
 
-#### Testing Functions with Complex Output
+### Testing Functions with Complex Output
 
 ::: code-group
 
@@ -539,7 +535,7 @@ Total tests:  9
 
 :::
 
-#### Integration with Test Runner
+### Integration with Test Runner
 
 ::: code-group
 

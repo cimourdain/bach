@@ -5,14 +5,14 @@ import path from 'node:path'
 const root = path.resolve(__dirname, '../..')
 
 const libs: { name: string; title: string }[] = [
-  { name: 'assert', title: 'Tests Assertions' },
-  { name: 'bash_utils', title: 'Bash Utilities' },
-  { name: 'cli', title: 'CLI' },
-  { name: 'docstring_helper', title: 'Docstring Helpers' },
   { name: 'log', title: 'Logging' },
   { name: 'parse_args', title: 'Arguments Parsing' },
-  { name: 'term_utils', title: 'Terminal Utilities' },
   { name: 'user_msg', title: 'User Messages' },
+  { name: 'bash_utils', title: 'Bash Utilities' },
+  { name: 'assert', title: 'Tests Assertions' },
+  { name: 'docstring_helper', title: 'Docstring Helpers[WIP]' },
+  { name: 'cli', title: 'CLI' },
+  { name: 'term_utils', title: 'Terminal Utilities' },
 ]
 
 const exists = (p: string) => fs.existsSync(path.join(root, p))

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Refresh the "Expected output" blocks of the library documentation pages.
 
-For every `::: code-group` found in the "## Usage" section of libs/<lib>.md, the
+For every `::: code-group` found in the "## Usage Examples" section of libs/<lib>.md, the
 "With bach" snippet is executed (in a sandbox where lib/bach/ links to this
 repository), its output is converted to styled HTML (ANSI colors) and written in a
 collapsed `::: details Expected output` block placed right after the code-group.
@@ -131,11 +131,11 @@ STALE_AFTER = re.compile(
 def process(lib: str, dry: bool) -> int:
     path = LIBS_DIR / f"{lib}.md"
     text = path.read_text()
-    m = re.search(r"\n## Usage\n", text)
+    m = re.search(r"\n## Usage Examples\n", text)
     if not m:
         return 0
     start = m.start() + 1
-    nxt = re.search(r"\n## (?!Usage)", text[start:])
+    nxt = re.search(r"\n## (?!Usage Examples)", text[start:])
     end = start + nxt.start() + 1 if nxt else len(text)
     sec = text[start:end]
 
@@ -168,7 +168,7 @@ def process(lib: str, dry: bool) -> int:
             continue
         output = run_snippet(bach.group(1), args, extra_env).strip("\n")
         if ERROR_PATTERNS.search(output):
-            title = re.findall(r"^#### (.*)$", sec[:g.start()], re.M)
+            title = re.findall(r"^### (.*)$", sec[:g.start()], re.M)
             print(f"WARNING {lib}: example '{title[-1] if title else '?'}' fails, output skipped:\n    "
                   + "\n    ".join(output.splitlines()[:3]), file=sys.stderr)
             pieces.append("\n")

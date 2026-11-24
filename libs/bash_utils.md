@@ -4,7 +4,7 @@ A collection of small helpers to manipulate strings and arrays in bash scripts.
 
 ## Overview
 
-The bash_utils library gathers building-block functions used by the other Bach libraries and useful in any script: find the position of substrings, sanitize strings, compute stable identifiers and sort arrays, using only bash builtins and standard tools (`sha256sum`, `awk`, `sort`).
+The bash_utils library gathers building-block functions used by the other Bach libraries and useful in any script: find the position of substrings, sanitize strings, compute stable identifiers and sort arrays and format associative arrays (json, markdown, ascii table), using only bash builtins and standard tools (`sha256sum`, `awk`, `sort`).
 
 ## Features
 
@@ -12,15 +12,14 @@ The bash_utils library gathers building-block functions used by the other Bach l
 - ✅ String sanitizing (alphabetic only, alphanumeric only, leading whitespaces trimming)
 - ✅ Unique identifiers from strings (sha256)
 - ✅ In-place numeric array sorting
+- ✅ Associative arrays to json, markdown or ascii table strings
 - ✅ Results printed on stdout, status code reporting failures
 
-## Usage
+## Usage Examples
 
 The library relies on the `bach` function (for its internal logging and helpers). When used standalone, source `bach.sh` before `bash_utils.sh`.
 
-### Basic Examples
-
-#### Index of a Substring
+### Index of a Substring
 
 Get the 0-based position of the first occurrence of a substring. `-1` is returned (with status `1`) when it is not found.
 
@@ -63,7 +62,7 @@ Substring not found</pre>
 
 :::
 
-#### Cleaning Strings
+### Cleaning Strings
 
 Keep only the letters, only the letters and digits, or remove the leading whitespaces of a string.
 
@@ -100,7 +99,7 @@ Left trimmed:  'User_42 (admin)!'</pre>
 
 :::
 
-#### Unique Hash
+### Unique Hash
 
 Compute a stable identifier (sha256) from a string.
 
@@ -133,9 +132,7 @@ bach::bash_utils::string::unique_hash "world"
 
 :::
 
-### Advanced Examples
-
-#### Index of Any Substring
+### Index of Any Substring
 
 Look for several substrings at once. The function returns the index **following** the earliest match, and an occurrence index (3rd argument, `0` by default) selects the n-th match in the string. The substrings are given as the name of an array.
 
@@ -185,7 +182,7 @@ No such occurrence</pre>
 
 :::
 
-#### Parsing a "key: value" Line
+### Parsing a "key: value" Line
 
 Combine the helpers to split a line at its first separator and clean both parts.
 
@@ -230,7 +227,7 @@ echo "key='${key}' value='${value}'"
 
 :::
 
-#### Sorting an Array
+### Sorting an Array
 
 Sort an array numerically, in place. The array is given by name.
 
@@ -260,6 +257,52 @@ echo "${numbers[*]}"
 ::: details Expected output
 
 <pre class="ansi" v-pre>1 2 10 33</pre>
+
+:::
+
+### Formatting an Associative Array
+
+Convert an associative array, given by name, to a json, markdown table or ascii table string. Keys are sorted alphabetically.
+
+::: code-group
+
+```bash [With bach]
+#!/bin/bash
+source lib/bach/bach.sh
+declare -A user=([name]="Ada" [role]="admin|dev")
+bach bash_utils::assoc_array::to_json user
+bach bash_utils::assoc_array::to_markdown user
+bach bash_utils::assoc_array::to_ascii user
+```
+
+```bash [Standalone]
+#!/bin/bash
+source lib/bach/bach.sh   # bash_utils relies on the `bach` function
+source my-libs/bash_utils.sh
+declare -A user=([name]="Ada" [role]="admin|dev")
+bach::bash_utils::assoc_array::to_json user
+bach::bash_utils::assoc_array::to_markdown user
+bach::bash_utils::assoc_array::to_ascii user
+```
+
+:::
+
+::: details Expected output
+
+<pre class="ansi" v-pre>{
+  "name": "Ada",
+  "role": "admin|dev"
+}
+| Key | Value |
+| --- | --- |
+| name | Ada |
+| role | admin\|dev |
++------+-----------+
+| Key  | Value     |
++------+-----------+
+| name | Ada       |
+| role | admin|dev |
++------+-----------+</pre>
 
 :::
 
@@ -355,6 +398,48 @@ bach::bash_utils::array::sort array_name
 
 **Parameters:**
 - `$1` (array_name): Name of the array to sort
+
+### bach::bash_utils::assoc_array::to_json
+
+Convert an associative array to a pretty formatted json object (2 spaces indentation, sorted keys, values are json strings).
+
+**Signature:**
+```bash
+bach::bash_utils::assoc_array::to_json assoc_name
+```
+
+**Parameters:**
+- `$1` (assoc_name): Name of the associative array
+
+**Output:** The json string (`{}` for an empty array)
+
+### bach::bash_utils::assoc_array::to_markdown
+
+Convert an associative array to a markdown table with the columns `Key` and `Value` (sorted keys, `|` is escaped, new lines become `<br>`).
+
+**Signature:**
+```bash
+bach::bash_utils::assoc_array::to_markdown assoc_name
+```
+
+**Parameters:**
+- `$1` (assoc_name): Name of the associative array
+
+**Output:** The markdown table
+
+### bach::bash_utils::assoc_array::to_ascii
+
+Convert an associative array to an ascii table with the columns `Key` and `Value` (sorted keys, new lines are displayed as `\n`).
+
+**Signature:**
+```bash
+bach::bash_utils::assoc_array::to_ascii assoc_name
+```
+
+**Parameters:**
+- `$1` (assoc_name): Name of the associative array
+
+**Output:** The ascii table
 
 ## Roadmap
 

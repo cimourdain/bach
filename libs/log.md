@@ -15,11 +15,9 @@ The log library provides a flexible logging system with multiple log levels, env
 - ✅ Level-based priority system
 - ✅ Output to stderr by default
 
-## Usage
+## Usage Examples
 
-### Basic Examples
-
-#### Simple Logging
+### Simple Logging
 
 ::: code-group
 
@@ -59,7 +57,7 @@ bach::log --fatal "Critical system failure"
 
 :::
 
-#### Log Levels
+### Log Levels
 
 Only messages whose level is at least the execution log level are displayed. The execution log level is defined by the [`LOG_LEVEL` environment variable](#log-level). Log levels can be given with long (`--debug`) or short (`-d`) options.
 
@@ -130,7 +128,7 @@ The following logs use the debug log level
 
 :::
 
-#### Logging to a File
+### Logging to a File
 
 Logs are written on stderr. Redirect stderr to route the logs to a file.
 
@@ -181,9 +179,7 @@ cat "$LOG_FILE"
 
 :::
 
-### Advanced Examples
-
-#### Error Handling with Logging
+### Error Handling with Logging
 
 This example wraps command execution in a `safe_operation` function so that the logs tell the whole story of a command: a debug log before running it, an info log when it succeeds, and an error log when it fails. The command output is captured instead of being printed, so that the error message raised by the failing command is part of the error log. The script log level is set to `debug` to display every step.
 
@@ -260,7 +256,7 @@ safe_operation "cat /nonexistent/file.txt"  # This will fail and log the error
 
 :::
 
-#### Integration with Error Trapping
+### Integration with Error Trapping
 
 This example uses the logs as the reporting channel of bash traps, so that a script never fails silently:
 

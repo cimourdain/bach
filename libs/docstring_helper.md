@@ -16,11 +16,9 @@ The docstring_helper library provides tools for creating rich, auto-generated do
 - ✅ **Version extraction**: Parse version from docstrings
 - ✅ **Flexible resolution**: Build docs from directories or pre-computed subcommand lists
 
-## Usage
+## Usage Examples
 
-### Basic Examples
-
-#### Simple Documentation Resolution
+### Simple Documentation Resolution
 
 ::: code-group
 
@@ -94,7 +92,7 @@ Usage:
 
 :::
 
-#### Extract Version
+### Extract Version
 
 ::: code-group
 
@@ -140,7 +138,7 @@ echo "Version: $version"
 
 :::
 
-#### Print Version
+### Print Version
 
 ::: code-group
 
@@ -176,7 +174,7 @@ bach::docstring_helper::print_version "$DOC"
 
 :::
 
-#### Build Documentation from Directory
+### Build Documentation from Directory
 
 ::: code-group
 
@@ -242,9 +240,7 @@ Usage:
 
 :::
 
-### Advanced Examples
-
-#### Complete CLI Application with Documentation
+### Complete CLI Application with Documentation
 
 <!-- args: --help -->
 ::: code-group
@@ -350,7 +346,7 @@ Options:
 
 :::
 
-#### Integration with Router Library
+### Integration with Router Library
 
 <!-- args: --help -->
 ::: code-group
@@ -466,7 +462,7 @@ Usage:
 
 :::
 
-#### Nested Subcommands
+### Nested Subcommands
 
 ::: code-group
 
@@ -538,7 +534,7 @@ Usage:
 
 :::
 
-#### Custom Usage with Subcommands
+### Custom Usage with Subcommands
 
 ::: code-group
 
@@ -630,7 +626,7 @@ Options:
 
 **Output:** Shows custom usage lines along with auto-generated subcommand usage.
 
-#### Excluding Files from Subcommand Discovery
+### Excluding Files from Subcommand Discovery
 
 ::: code-group
 
@@ -704,7 +700,7 @@ Usage:
 
 :::
 
-#### Dynamic Command Name Detection
+### Dynamic Command Name Detection
 
 ::: code-group
 
@@ -773,7 +769,7 @@ Usage:
 
 :::
 
-#### Multi-Section Documentation
+### Multi-Section Documentation
 
 ::: code-group
 
@@ -899,7 +895,7 @@ Examples:
 
 :::
 
-#### Conditional Documentation
+### Conditional Documentation
 
 ::: code-group
 
@@ -990,7 +986,7 @@ Usage:
 
 :::
 
-#### Version Comparison
+### Version Comparison
 
 ::: code-group
 
@@ -1054,7 +1050,7 @@ Version 2 is newer</pre>
 
 :::
 
-#### Building Help for Subcommand
+### Building Help for Subcommand
 
 <!-- args: --help -->
 ::: code-group
@@ -1145,7 +1141,7 @@ Options:
 
 :::
 
-#### Testing Documentation Generation
+### Testing Documentation Generation
 
 ::: code-group
 
@@ -1243,7 +1239,7 @@ print_test_summary
 
 :::
 
-#### Integration with Parse Args
+### Integration with Parse Args
 
 ::: code-group
 
@@ -1345,7 +1341,7 @@ fi
 
 :::
 
-#### Directory Scanner with Filters
+### Directory Scanner with Filters
 
 ::: code-group
 

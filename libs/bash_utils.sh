@@ -5,7 +5,8 @@
 ################################################################################
 # Description:
 #   String and array helpers: substring position lookup, string sanitizing,
-#   unique hashes and in-place array sorting.
+#   unique hashes, in-place array sorting and associative array formatting
+#   (json, markdown, ascii table).
 #
 # Usage:
 #   source /path/to/bash_utils.sh
@@ -28,7 +29,10 @@ if declare -F bach::bash_utils::string::first_index_of_substring &>/dev/null && 
    declare -F bach::bash_utils::string::only_alpha &>/dev/null && \
    declare -F bach::bash_utils::string::only_alphanumeric &>/dev/null && \
    declare -F bach::bash_utils::string::trim_leading_whitespaces &>/dev/null && \
-   declare -F bach::bash_utils::array::sort &>/dev/null; then
+   declare -F bach::bash_utils::array::sort &>/dev/null && \
+   declare -F bach::bash_utils::assoc_array::to_json &>/dev/null && \
+   declare -F bach::bash_utils::assoc_array::to_markdown &>/dev/null && \
+   declare -F bach::bash_utils::assoc_array::to_ascii &>/dev/null; then
     return 0
 fi
 
@@ -257,3 +261,125 @@ bach::bash_utils::array::sort() {
     mapfile -t array_to_sort < <(printf '%s\n' "${array_to_sort[@]}" | sort -n)
 }
 export -f bach::bash_utils::array::sort
+
+
+################################################################################
+# Get the keys of an associative array sorted alphabetically (private)
+# Arguments:
+#   $1 - assoc_name: Name of the associative array
+#   $2 - keys_name: Name of the indexed array receiving the sorted keys
+################################################################################
+bach::bash_utils::__private::assoc_array::sorted_keys() {
+    local -n assoc_source_ref="$1"
+    local -n sorted_keys_ref="$2"
+    sorted_keys_ref=()
+    (( ${#assoc_source_ref[@]} == 0 )) || mapfile -d '' -t sorted_keys_ref < <(printf '%s\0' "${!assoc_source_ref[@]}" | LC_ALL=C sort -z)
+}
+
+################################################################################
+# Escape a string to be a json string content (private)
+# Arguments:
+#   $1 - value: String to escape
+#   $2 - result_name: Name of the variable receiving the escaped string
+################################################################################
+bach::bash_utils::__private::json_escape() {
+    local -n json_escaped_ref="$2"
+    local escaped="$1"
+    escaped="${escaped//\\/\\\\}"
+    escaped="${escaped//\"/\\\"}"
+    escaped="${escaped//$'\n'/\\n}"
+    escaped="${escaped//$'\r'/\\r}"
+    json_escaped_ref="${escaped//$'\t'/\\t}"
+}
+
+################################################################################
+# Convert an associative array to a pretty formatted json object
+# Keys are sorted alphabetically, values are json strings.
+# Arguments:
+#   $1 - assoc_name: Name of the associative array
+# Outputs:
+#   The json string on stdout
+# Returns:
+#   0 on success
+################################################################################
+bach::bash_utils::assoc_array::to_json() {
+    local -n assoc_ref="$1"
+    local -a keys
+    bach::bash_utils::__private::assoc_array::sorted_keys "$1" keys
+    if (( ${#keys[@]} == 0 )); then
+        printf '{}\n'
+        return 0
+    fi
+
+    local idx key escaped_key escaped_value separator=","
+    printf '{\n'
+    for idx in "${!keys[@]}"; do
+        key="${keys[idx]}"
+        bach::bash_utils::__private::json_escape "$key" escaped_key
+        bach::bash_utils::__private::json_escape "${assoc_ref["$key"]}" escaped_value
+        (( idx < ${#keys[@]} - 1 )) || separator=""
+        printf '  "%s": "%s"%s\n' "$escaped_key" "$escaped_value" "$separator"
+    done
+    printf '}\n'
+}
+export -f bach::bash_utils::assoc_array::to_json
+
+################################################################################
+# Convert an associative array to a markdown table (columns Key and Value)
+# Keys are sorted alphabetically, "|" is escaped and new lines become <br>.
+# Arguments:
+#   $1 - assoc_name: Name of the associative array
+# Outputs:
+#   The markdown table on stdout
+# Returns:
+#   0 on success
+################################################################################
+bach::bash_utils::assoc_array::to_markdown() {
+    local -n assoc_ref="$1"
+    local -a keys
+    bach::bash_utils::__private::assoc_array::sorted_keys "$1" keys
+
+    local key escaped_key escaped_value
+    printf '| Key | Value |\n| --- | --- |\n'
+    for key in "${keys[@]}"; do
+        escaped_key="${key//|/\\|}"
+        escaped_key="${escaped_key//$'\n'/<br>}"
+        escaped_value="${assoc_ref["$key"]//|/\\|}"
+        escaped_value="${escaped_value//$'\n'/<br>}"
+        printf '| %s | %s |\n' "$escaped_key" "$escaped_value"
+    done
+}
+export -f bach::bash_utils::assoc_array::to_markdown
+
+################################################################################
+# Convert an associative array to an ascii table (columns Key and Value)
+# Keys are sorted alphabetically, new lines are displayed as \n.
+# Arguments:
+#   $1 - assoc_name: Name of the associative array
+# Outputs:
+#   The ascii table on stdout
+# Returns:
+#   0 on success
+################################################################################
+bach::bash_utils::assoc_array::to_ascii() {
+    local -n assoc_ref="$1"
+    local -a keys cells_key=("Key") cells_value=("Value")
+    local key cell
+    local -i key_width=3 value_width=5 idx
+    bach::bash_utils::__private::assoc_array::sorted_keys "$1" keys
+    for key in "${keys[@]}"; do
+        cell="${key//$'\n'/\\n}"; cells_key+=("$cell"); (( ${#cell} <= key_width )) || key_width=${#cell}
+        cell="${assoc_ref["$key"]//$'\n'/\\n}"; cells_value+=("$cell"); (( ${#cell} <= value_width )) || value_width=${#cell}
+    done
+
+    local border key_dashes value_dashes
+    printf -v key_dashes '%*s' "$((key_width + 2))" ""
+    printf -v value_dashes '%*s' "$((value_width + 2))" ""
+    border="+${key_dashes// /-}+${value_dashes// /-}+"
+    for idx in "${!cells_key[@]}"; do
+        (( idx > 1 )) || printf '%s\n' "$border"
+        printf '| %-*s | %-*s |\n' "$key_width" "${cells_key[idx]}" "$value_width" "${cells_value[idx]}"
+    done
+    printf '%s\n' "$border"
+}
+export -f bach::bash_utils::assoc_array::to_ascii

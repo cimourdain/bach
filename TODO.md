@@ -89,6 +89,8 @@ Command:
 
 ### Validate against specification
 
+Done: docopt specification (string or file), `bach::parse_args::from_spec`, see libs/parse_args.md. Remaining: options with argument in short syntax (-o FILE).
+
 `bach::parse_args::from_spec` > Wrapper around `bach::parse_args` to check element is valid against spec.
 
 Spec:

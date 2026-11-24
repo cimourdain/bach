@@ -135,6 +135,32 @@ test_array_sort() {
     bach::assert::contains "${already_sorted[*]}" "1 2 3" "Sorted array is unchanged"
 }
 
+test_assoc_array_to_json() {
+    bach::assert::section "Test assoc_array::to_json"
+    local -A data=([b]="x" [a]='say "hi"' ["k 2"]=$'l1\nl2')
+    local -A empty=()
+    local expected=$'{\n  "a": "say \\"hi\\"",\n  "b": "x",\n  "k 2": "l1\\nl2"\n}'
+    bach::assert::contains "$(bach::bash_utils::assoc_array::to_json data)" "$expected" "Pretty json, sorted keys, escaped values"
+    bach::assert::contains "$(bach::bash_utils::assoc_array::to_json empty)" "{}" "Empty array"
+}
+
+test_assoc_array_to_markdown() {
+    bach::assert::section "Test assoc_array::to_markdown"
+    local -A data=([b]="x|y" [a]=$'l1\nl2')
+    local expected=$'| Key | Value |\n| --- | --- |\n| a | l1<br>l2 |\n| b | x\\|y |'
+    bach::assert::contains "$(bach::bash_utils::assoc_array::to_markdown data)" "$expected" "Markdown table, sorted keys, escaped values"
+}
+
+test_assoc_array_to_ascii() {
+    bach::assert::section "Test assoc_array::to_ascii"
+    local -A data=([long_key]="v" [a]="a longer value")
+    local expected=$'+----------+----------------+\n| Key      | Value          |\n+----------+----------------+\n| a        | a longer value |\n| long_key | v              |\n+----------+----------------+'
+    bach::assert::contains "$(bach::bash_utils::assoc_array::to_ascii data)" "$expected" "Ascii table with aligned columns"
+    local -A empty=()
+    expected=$'+-----+-------+\n| Key | Value |\n+-----+-------+'
+    bach::assert::contains "$(bach::bash_utils::assoc_array::to_ascii empty)" "$expected" "Empty array: header only"
+}
+
 main() {
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -154,6 +180,9 @@ main() {
     test_only_alphanumeric
     test_trim_leading_whitespaces
     test_array_sort
+    test_assoc_array_to_json
+    test_assoc_array_to_markdown
+    test_assoc_array_to_ascii
 
     bach::assert::print_test_summary
     exit $?

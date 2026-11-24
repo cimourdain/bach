@@ -89,9 +89,7 @@ bach::user_msg --h5 "Minimal"
 Minimal
 ```
 
-## Usage
-
-### Basic Examples
+## Usage Examples
 
 ::: code-group
 
